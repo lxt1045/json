@@ -2,17 +2,17 @@
 Trying to implement the fastest JSON library for golang.
 
 # 前言
-本项目已存在 [blog](https://github.com/lxt1045/blog/tree/main/sample/json/json) 仓库
+本项目已存在 [blog](https://github.com/lxt1045/blog/main/sample/json/json) 仓库
 下存在半年多了，一直没有精力整理。
 
 当前还有一些特性没有实现，且许多边界条件还未覆盖。
 
 # 性能表现
-总的来说，此库以纯 Go 语言实现，在性能追平了以汇编和 SIMD 实现的 [sonic](https://github.com/bytedance/sonic)，甚至略胜一筹。
+总的来说，此库以纯 Go 语言实现，在性能上追平了以汇编和 SIMD 实现的 [sonic](https://github.com/bytedance/sonic)，甚至略胜一筹。
 
 ## 1. sonic 的测试用例
 ### 1.1 执行 [sonic](https://github.com/bytedance/sonic) 仓库下的 small JSON 数据，
-[单测源码在这](https://github.com/lxt1045/json/blob/tree/main/struct_bench_test.go#L684), 结果如下：
+[单测源码在这](https://github.com/lxt1045/json/blob/main/struct_bench_test.go#L684), 结果如下：
 ```sh
 BenchmarkUnmarshalStruct1x_small
 BenchmarkUnmarshalStruct1x_small/lxt-st
@@ -31,7 +31,7 @@ BenchmarkUnmarshalStruct1x_small/std.marshal-st-12     624548   1703 ns/op  384 
 
 
 ### 1.2 执行 [sonic](https://github.com/bytedance/sonic) 仓库下的 medium JSON 数据，
-[单测源码在这](https://github.com/lxt1045/json/blob/tree/main/struct_bench_test.go#L803), 结果如下：
+[单测源码在这](https://github.com/lxt1045/json/blob/main/struct_bench_test.go#L803), 结果如下：
 ```sh
 BenchmarkUnmarshalStruct1x_medium/lxt-st
 BenchmarkUnmarshalStruct1x_medium/lxt-st-12            47306  21882 ns/op   4551 B/op   23 allocs/op
@@ -48,7 +48,7 @@ BenchmarkUnmarshalStruct1x_medium/std.marshal-st-12     60115  18047 ns/op   947
 ```
 
 ### 1.3 执行 [sonic](https://github.com/bytedance/sonic) 仓库下的 large JSON 数据，
-[单测源码在这](https://github.com/lxt1045/json/blob/tree/main/struct_bench_test.go#L921), 结果如下：
+[单测源码在这](https://github.com/lxt1045/json/blob/main/struct_bench_test.go#L921), 结果如下：
 ```sh
 
 BenchmarkUnmarshalStruct1x_large/lxt-st
@@ -69,7 +69,7 @@ BenchmarkUnmarshalStruct1x_large/std.marshal-st-12    1753   697935 ns/op   3382
 
 ## 2. 不同 struct 成员类型测试用例
 
-[测试用例源码在这里](https://github.com/lxt1045/json/blob/tree/main/bench_test.go#L186)
+[测试用例源码在这里](https://github.com/lxt1045/json/blob/main/bench_test.go#L186)
 ```go
 func BenchmarkUnmarshalType(b *testing.B) {
  type X struct {
@@ -300,7 +300,7 @@ BenchmarkUnmarshalType/Marshal-*string-10-sonic-12   3336834  355.1 ns/op  294 B
 
 # 3. 继续优化
 
-由 cpu profile 文件 [pprof001.svg](https://github.com/lxt1045/json/blob/tree/main/pprof001.svg) 可知，当前 map 访问 CPU 占比已高达 17.53%，如果不修改架构，剩余的优化空间已经比较小了。
+由 cpu profile 文件 [pprof001.svg](https://raw.githubusercontent.com/lxt1045/json/main/pprof001.svg) 可知，当前 map 访问 CPU 占比已高达 17.53%，如果不修改架构，剩余的优化空间已经比较小了。
 
 不过 "生命不息,折腾不止"，作者将继续折腾。
 
