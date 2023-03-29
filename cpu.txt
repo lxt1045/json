@@ -1,0 +1,2866 @@
+Total: 2.07s
+ROUTINE ======================== aeshashbody in /usr/local/go/src/runtime/asm_amd64.s
+      70ms       70ms (flat, cum)  3.38% of Total
+         .          .    909:// DX: address to put return value
+         .          .    910:TEXT aeshashbody<>(SB),NOSPLIT,$0-0
+         .          .    911:	// Fill an SSE register with our seeds.
+         .          .    912:	MOVQ	h+8(FP), X0			// 64 bits of per-table hash seed
+         .          .    913:	PINSRW	$4, CX, X0			// 16 bits of length
+      10ms       10ms    914:	PSHUFHW $0, X0, X0			// repeat length 4 times total
+         .          .    915:	MOVO	X0, X1				// save unscrambled seed
+         .          .    916:	PXOR	runtime·aeskeysched(SB), X0	// xor in per-process seed
+         .          .    917:	AESENC	X0, X0				// scramble seed
+         .          .    918:
+      10ms       10ms    919:	CMPQ	CX, $16
+         .          .    920:	JB	aes0to15
+         .          .    921:	JE	aes16
+         .          .    922:	CMPQ	CX, $32
+         .          .    923:	JBE	aes17to32
+         .          .    924:	CMPQ	CX, $64
+         .          .    925:	JBE	aes33to64
+         .          .    926:	CMPQ	CX, $128
+         .          .    927:	JBE	aes65to128
+         .          .    928:	JMP	aes129plus
+         .          .    929:
+         .          .    930:aes0to15:
+         .          .    931:	TESTQ	CX, CX
+         .          .    932:	JE	aes0
+         .          .    933:
+         .          .    934:	ADDQ	$16, AX
+         .          .    935:	TESTW	$0xff0, AX
+         .          .    936:	JE	endofpage
+         .          .    937:
+         .          .    938:	// 16 bytes loaded at this address won't cross
+         .          .    939:	// a page boundary, so we can load it directly.
+         .          .    940:	MOVOU	-16(AX), X1
+         .          .    941:	ADDQ	CX, CX
+         .          .    942:	MOVQ	$masks<>(SB), AX
+         .          .    943:	PAND	(AX)(CX*8), X1
+         .          .    944:final1:
+      10ms       10ms    945:	PXOR	X0, X1	// xor data with seed
+      10ms       10ms    946:	AESENC	X1, X1	// scramble combo 3 times
+         .          .    947:	AESENC	X1, X1
+      20ms       20ms    948:	AESENC	X1, X1
+      10ms       10ms    949:	MOVQ	X1, (DX)
+         .          .    950:	RET
+         .          .    951:
+         .          .    952:endofpage:
+         .          .    953:	// address ends in 1111xxxx. Might be up against
+         .          .    954:	// a page boundary, so load ending at last byte.
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.(*TagInfo).Set in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/struct.go
+      20ms      150ms (flat, cum)  7.25% of Total
+         .          .    128:
+         .          .    129:	Marshalable marshalable `json:"-"`
+         .          .    130:}
+         .          .    131:
+         .          .    132:func (t *TagInfo) Set(pStruct unsafe.Pointer, pIn unsafe.Pointer) {
+      20ms      150ms    133:	t.Marshalable.Set(t.StructField, pStruct, pIn)
+         .          .    134:}
+         .          .    135:func (t *TagInfo) Get(pStruct unsafe.Pointer, pOut unsafe.Pointer) {
+         .          .    136:	t.Marshalable.Get(t.StructField, pStruct, pOut)
+         .          .    137:}
+         .          .    138:
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.BenchmarkMyUnmarshal.func1 in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/struct_bench_test.go
+      10ms      1.73s (flat, cum) 83.57% of Total
+         .          .    204:	}
+         .          .    205:
+         .          .    206:	name := "Unmarshal"
+         .          .    207:	b.Run(name, func(b *testing.B) {
+         .          .    208:		b.ReportAllocs()
+      10ms       10ms    209:		for i := 0; i < b.N; i++ {
+         .      1.72s    210:			Unmarshal(bsJSON, &d)
+         .          .    211:		}
+         .          .    212:		b.SetBytes(int64(b.N))
+         .          .    213:		b.StopTimer()
+         .          .    214:	})
+         .          .    215:}
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.IsSpace in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+     110ms      110ms (flat, cum)  5.31% of Total
+         .          .    132:}
+         .          .    133:
+         .          .    134:const charSpace uint32 = 1<<('\t'-1) | 1<<('\n'-1) | 1<<('\v'-1) | 1<<('\f'-1) | 1<<('\r'-1) | 1<<(' '-1)
+         .          .    135:
+         .          .    136:func IsSpace(b byte) bool {
+     110ms      110ms    137:	return b == 0x85 || b == 0xA0 || (charSpace>>(b-1)&0x1 > 0)
+         .          .    138:	// switch b {
+         .          .    139:	// case '\t', '\n', '\v', '\f', '\r', ' ', 0x85, 0xA0:
+         .          .    140:	// 	return true
+         .          .    141:	// }
+         .          .    142:	// return false
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.LoadTagNode in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/struct.go
+      10ms       50ms (flat, cum)  2.42% of Total
+         .          .     13:var (
+         .          .     14:	cacheStructTagInfo = make(map[string]*tagNode) //map[type]map[string]TagInfo
+         .          .     15:	cacheLock          sync.RWMutex
+         .          .     16:)
+         .          .     17:
+      10ms       10ms     18:func LoadTagNode(key string) (n *tagNode) {
+         .       20ms     19:	cacheLock.RLock()
+         .       20ms     20:	n = cacheStructTagInfo[key]
+         .          .     21:	if n != nil {
+         .          .     22:		cacheLock.RUnlock()
+         .          .     23:		return
+         .          .     24:	}
+         .          .     25:	cacheLock.RUnlock()
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.Unmarshal in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/struct.go
+      30ms      1.72s (flat, cum) 83.09% of Total
+         .          .    225:	for typ.Kind() == reflect.Ptr {
+         .          .    226:		vi.Set(reflect.New(vi.Type().Elem()))
+         .          .    227:		vi = vi.Elem()
+         .          .    228:		typ = typ.Elem()
+         .          .    229:	}
+      30ms      180ms    230:	node := LoadTagNode(typ.PkgPath() + "." + typ.Name())
+         .          .    231:	tagInfo, err := node.GetTagInfo(typ)
+         .          .    232:	if err != nil {
+         .          .    233:		return
+         .          .    234:	}
+         .          .    235:
+         .          .    236:	defer func() {
+         .          .    237:		if e := recover(); e != nil {
+         .          .    238:			err = e.(error)
+         .          .    239:			err = errors.New(err.Error())
+         .          .    240:			return
+         .          .    241:		}
+         .          .    242:	}()
+         .          .    243:	empty := (*emptyInterface)(unsafe.Pointer(&in))
+         .      1.54s    244:	parseNextUnit(bs, empty.word, tagInfo)
+         .          .    245:	if err != nil {
+         .          .    246:		return
+         .          .    247:	}
+         .          .    248:
+         .          .    249:	return
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.parseNum in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+         0       20ms (flat, cum)  0.97% of Total
+         .          .    262:}
+         .          .    263:
+         .          .    264:func parseNum(stream []byte) (raw []byte, i int) {
+         .          .    265:	for ; i < len(stream); i++ {
+         .          .    266:		c := stream[i]
+         .       20ms    267:		if IsSpace(c) || c == ']' || c == '}' || c == ',' {
+         .          .    268:			raw, i = stream[:i], i+1
+         .          .    269:			return
+         .          .    270:		}
+         .          .    271:	}
+         .          .    272:	raw = stream
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.parseNextUnit in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+     220ms      2.09s (flat, cum) 100.97% of Total
+         .          .    155:	if len(stream) < 2 || stream[0] != '{' {
+         .          .    156:		panicIncorrectFormat(stream[:])
+         .          .    157:	}
+         .          .    158:	var key []byte
+         .          .    159:	for i = 1; i < len(stream); {
+      40ms      140ms    160:		i += trimSpace(stream[i:])
+         .          .    161:		if stream[i] == ']' || stream[i] == '}' {
+         .          .    162:			i++
+         .          .    163:			break // 此 struct 结束语法分析
+         .          .    164:		}
+         .          .    165:		switch stream[i] {
+         .          .    166:		default:
+         .          .    167:			if (stream[i] >= '0' && stream[i] <= '9') || stream[i] == '-' {
+         .          .    168:				if len(key) <= 0 {
+         .          .    169:					panicIncorrectFormat(stream[i:])
+         .          .    170:				}
+         .       20ms    171:				raw, size := parseNum(stream[i:])
+         .          .    172:				i += size
+      10ms       90ms    173:				if tag, ok := tis[string(key)]; ok && pObj != nil {
+         .      210ms    174:					setNumberField(pObj, tag, raw, Number)
+         .          .    175:				}
+         .          .    176:				key = nil
+         .          .    177:			} else {
+         .          .    178:				panicIncorrectFormat(stream[i:])
+         .          .    179:			}
+         .          .    180:		case '{': // obj
+      10ms       10ms    181:			if len(key) <= 0 {
+         .          .    182:				panicIncorrectFormat(stream[i:])
+         .          .    183:			}
+      10ms       50ms    184:			if tag, ok := tis[string(key)]; ok {
+      20ms      570ms    185:				i += setObjField(pObj, tag, stream[i:])
+         .          .    186:			} else {
+         .          .    187:				i += parseNextUnit(stream[i:], nil, tag.Children)
+         .          .    188:			}
+         .          .    189:			key = nil
+         .          .    190:		case '[': // obj
+         .          .    191:			if len(key) <= 0 {
+         .          .    192:				panicIncorrectFormat(stream[i:])
+         .          .    193:			}
+         .          .    194:			if tag, ok := tis[string(key)]; ok {
+         .          .    195:				i += setObjField(pObj, tag, stream[i:])
+         .          .    196:			} else {
+         .          .    197:				i += parseNextUnit(stream[i:], nil, tag.Children)
+         .          .    198:			}
+         .          .    199:			key = nil
+      10ms       10ms    200:		case 'n':
+         .          .    201:			if len(key) <= 0 {
+         .          .    202:				panicIncorrectFormat(stream[i:])
+         .          .    203:			}
+         .          .    204:			if stream[i+1] != 'u' || stream[i+2] != 'l' || stream[i+3] != 'l' {
+         .          .    205:				panicIncorrectFormat(stream[i:])
+         .          .    206:			}
+         .          .    207:			i += 4
+         .          .    208:			key = nil
+         .          .    209:		case 't':
+         .          .    210:			if len(key) <= 0 {
+         .          .    211:				panicIncorrectFormat(stream[i:])
+         .          .    212:			}
+         .          .    213:			if stream[i+1] != 'r' || stream[i+2] != 'u' || stream[i+3] != 'e' {
+         .          .    214:				panicIncorrectFormat(stream[i:])
+         .          .    215:			}
+         .          .    216:			i += 4
+         .          .    217:			if tag, ok := tis[string(key)]; ok && pObj != nil {
+         .          .    218:				setBoolField(pObj, tag, true)
+         .          .    219:			}
+         .          .    220:			key = nil
+         .          .    221:		case 'f':
+         .          .    222:			if len(key) <= 0 {
+         .          .    223:				panicIncorrectFormat(stream[i:])
+         .          .    224:			}
+         .          .    225:			if stream[i+1] != 'a' || stream[i+2] != 'l' || stream[i+3] != 's' || stream[i+4] != 'e' {
+         .          .    226:				panicIncorrectFormat(stream[i:])
+         .          .    227:			}
+         .          .    228:			i += 5
+         .          .    229:			if tag, ok := tis[string(key)]; ok && pObj != nil {
+         .          .    230:				setBoolField(pObj, tag, false)
+         .          .    231:			}
+         .          .    232:			key = nil
+         .          .    233:		case '"':
+         .          .    234:			if len(key) <= 0 {
+      30ms       50ms    235:				i += trimSpace(stream[i:])
+         .          .    236:				size := 0
+      20ms      190ms    237:				key, size = parseStr(stream[i:]) //先解析key 再解析value
+         .          .    238:				i += size
+      20ms       60ms    239:				i += trimSpace(stream[i:])
+         .          .    240:				if stream[i] != ':' {
+         .          .    241:					panicIncorrectFormat(stream[i:])
+         .          .    242:				}
+         .          .    243:				i++
+      20ms       20ms    244:				i += trimSpace(stream[i:])
+         .          .    245:				continue
+         .          .    246:			} else {
+         .       80ms    247:				raw, size := parseStr(stream[i:])
+         .          .    248:				i += size
+         .      160ms    249:				if tag, ok := tis[string(key)]; ok && pObj != nil {
+      10ms      360ms    250:					setStringField(pObj, tag, raw)
+         .          .    251:				}
+         .          .    252:				key = nil
+         .          .    253:			}
+         .          .    254:		}
+      10ms       60ms    255:		i += trimSpace(stream[i:])
+      10ms       10ms    256:		if stream[i] == ',' {
+         .          .    257:			i++
+         .          .    258:			continue
+         .          .    259:		}
+         .          .    260:	}
+         .          .    261:	return
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.parseStr in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+     250ms      250ms (flat, cum) 12.08% of Total
+         .          .    273:	return
+         .          .    274:}
+         .          .    275:
+         .          .    276://stream: "fgshw1321"...
+         .          .    277:func parseStr(stream []byte) (raw []byte, i int) {
+      70ms       70ms    278:	for i = 1; i < len(stream); {
+      20ms       20ms    279:		if stream[i] == '"' {
+      10ms       10ms    280:			if len(raw) <= 0 {
+      10ms       10ms    281:				raw = stream[1:i]
+         .          .    282:			}
+         .          .    283:			return raw, i + 1
+         .          .    284:		}
+      10ms       10ms    285:		if stream[i] == '\\' {
+         .          .    286:			word, wordSize := unescapeStr(stream[i:])
+     100ms      100ms    287:			if len(raw) <= 0 {
+         .          .    288:				raw = stream[1:i]
+         .          .    289:			}
+         .          .    290:			raw = append(raw, word...)
+         .          .    291:			i += wordSize
+         .          .    292:			continue
+         .          .    293:		}
+         .          .    294:		if len(raw) > 0 {
+         .          .    295:			raw = append(raw, stream[i])
+         .          .    296:		}
+      30ms       30ms    297:		i++
+         .          .    298:	}
+         .          .    299:	return
+         .          .    300:}
+         .          .    301:
+         .          .    302:// unescape unescapes a string
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.setField in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/marshalable_func.go
+      20ms       60ms (flat, cum)  2.90% of Total
+         .          .     95:}
+         .          .     96:
+         .          .     97:func setField(field reflect.StructField, pStruct unsafe.Pointer, pIn unsafe.Pointer) {
+         .          .     98:	pValue := unsafe.Pointer(uintptr(pStruct) + uintptr(field.Offset))
+         .          .     99:	typ := field.Type
+         .       10ms    100:	if typ.Kind() != reflect.Ptr {
+         .          .    101:		from := SliceHeader{
+         .          .    102:			Data: uintptr(pIn),
+         .       20ms    103:			Len:  int(typ.Size()),
+         .          .    104:			Cap:  int(typ.Size()),
+         .          .    105:		}
+         .          .    106:		to := SliceHeader{
+         .          .    107:			Data: uintptr(pValue),
+         .          .    108:			Len:  int(typ.Size()),
+      10ms       10ms    109:			Cap:  int(typ.Size()),
+         .          .    110:		}
+      10ms       20ms    111:		copy(*(*[]byte)(unsafe.Pointer(&to)), *(*[]byte)(unsafe.Pointer(&from)))
+         .          .    112:		return
+         .          .    113:	}
+         .          .    114:	setPointerField(field, pStruct, pIn)
+         .          .    115:	return
+         .          .    116:}
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.setFieldString in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/marshalable_func.go
+      30ms       30ms (flat, cum)  1.45% of Total
+         .          .    127:	*(*unsafe.Pointer)(pValue) = *(*unsafe.Pointer)(pIn)
+         .          .    128:	return
+         .          .    129:}
+         .          .    130:
+         .          .    131:func setFieldString(field reflect.StructField, pStruct unsafe.Pointer, pIn unsafe.Pointer) {
+      10ms       10ms    132:	pValue := unsafe.Pointer(uintptr(pStruct) + uintptr(field.Offset))
+         .          .    133:	typ := field.Type
+         .          .    134:	if typ.Kind() != reflect.Ptr {
+         .          .    135:		*(*string)(pValue) = *(*string)(pIn)
+      20ms       20ms    136:		return
+         .          .    137:	}
+         .          .    138:	setPointerField(field, pStruct, pIn)
+         .          .    139:	return
+         .          .    140:}
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.setNumberField in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+         0      210ms (flat, cum) 10.14% of Total
+         .          .     57:}
+         .          .     58:func setNumberField(pObj unsafe.Pointer, tag *TagInfo, raw []byte, typ Type) (i int) {
+         .          .     59:	if tag.Kind < reflect.Int || tag.Kind > reflect.Float64 {
+         .          .     60:		panicIncorrectType(False, tag)
+         .          .     61:	}
+         .      120ms     62:	num, err := strconv.ParseFloat(bytesString(raw), 64)
+         .          .     63:	if err != nil {
+         .          .     64:		panicIncorrectFormat([]byte("error:" + err.Error() + ", stream:" + string(raw)))
+         .          .     65:	}
+         .          .     66:	switch tag.Kind {
+         .          .     67:	case reflect.Int8:
+         .          .     68:		i8 := int8(num)
+         .          .     69:		tag.Set(pObj, unsafe.Pointer(&i8))
+         .          .     70:	case reflect.Uint8:
+         .          .     71:		u8 := int8(num)
+         .          .     72:		tag.Set(pObj, unsafe.Pointer(&u8))
+         .          .     73:	case reflect.Uint16:
+         .          .     74:		u := uint16(num)
+         .          .     75:		tag.Set(pObj, unsafe.Pointer(&u))
+         .          .     76:	case reflect.Int16:
+         .          .     77:		i := int16(num)
+         .          .     78:		tag.Set(pObj, unsafe.Pointer(&i))
+         .          .     79:	case reflect.Uint32:
+         .          .     80:		u := uint32(num)
+         .          .     81:		tag.Set(pObj, unsafe.Pointer(&u))
+         .          .     82:	case reflect.Int32:
+         .          .     83:		i := int32(num)
+         .          .     84:		tag.Set(pObj, unsafe.Pointer(&i))
+         .          .     85:	case reflect.Uint64:
+         .          .     86:		u := uint64(num)
+         .          .     87:		tag.Set(pObj, unsafe.Pointer(&u))
+         .          .     88:	case reflect.Int64:
+         .       10ms     89:		i := int64(num)
+         .       40ms     90:		tag.Set(pObj, unsafe.Pointer(&i))
+         .          .     91:	case reflect.Int:
+         .          .     92:		u := int(num)
+         .       40ms     93:		tag.Set(pObj, unsafe.Pointer(&u))
+         .          .     94:	case reflect.Uint:
+         .          .     95:		i := uint(num)
+         .          .     96:		tag.Set(pObj, unsafe.Pointer(&i))
+         .          .     97:	case reflect.Float32:
+         .          .     98:		u := float32(num)
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.setObjField in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+         0      550ms (flat, cum) 26.57% of Total
+         .          .    124:func setObjField(pObj unsafe.Pointer, tag *TagInfo, raw []byte) (i int) {
+         .          .    125:	if tag.Kind != reflect.Struct {
+         .          .    126:		panicIncorrectType(False, tag)
+         .          .    127:	}
+         .          .    128:	pField := unsafe.Pointer(uintptr(pObj) + uintptr(tag.StructField.Offset))
+         .      550ms    129:	size := parseNextUnit(raw, pField, tag.Children)
+         .          .    130:	i += size
+         .          .    131:	return
+         .          .    132:}
+         .          .    133:
+         .          .    134:const charSpace uint32 = 1<<('\t'-1) | 1<<('\n'-1) | 1<<('\v'-1) | 1<<('\f'-1) | 1<<('\r'-1) | 1<<(' '-1)
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.setStringField in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+      30ms      350ms (flat, cum) 16.91% of Total
+         .          .    110:		panicIncorrectType(typ, tag)
+         .          .    111:	}
+         .          .    112:
+         .          .    113:	return
+         .          .    114:}
+      30ms      280ms    115:func setStringField(pObj unsafe.Pointer, tag *TagInfo, raw []byte) {
+         .          .    116:	if tag.Kind != reflect.String {
+         .          .    117:		panicIncorrectType(False, tag)
+         .          .    118:	}
+         .          .    119:	// str := bytesString(raw)
+         .          .    120:	// tag.Set(pObj, unsafe.Pointer(&str))
+         .       70ms    121:	tag.Set(pObj, unsafe.Pointer(&raw))
+         .          .    122:	return
+         .          .    123:}
+         .          .    124:func setObjField(pObj unsafe.Pointer, tag *TagInfo, raw []byte) (i int) {
+         .          .    125:	if tag.Kind != reflect.Struct {
+         .          .    126:		panicIncorrectType(False, tag)
+ROUTINE ======================== github.com/lxt1045/Experiment/golang/json/pkg/json.trimSpace in /Users/bytedance/go/src/github.com/lxt1045/Experiment/golang/json/pkg/json/json.go
+     120ms      210ms (flat, cum) 10.14% of Total
+         .          .    140:	// 	return true
+         .          .    141:	// }
+         .          .    142:	// return false
+         .          .    143:}
+         .          .    144:func trimSpace(stream []byte) (i int) {
+     100ms      100ms    145:	for i = range stream {
+         .       90ms    146:		if !IsSpace(stream[i]) {
+         .          .    147:			break
+         .          .    148:		}
+         .          .    149:	}
+      20ms       20ms    150:	return
+         .          .    151:}
+         .          .    152:
+         .          .    153://解析 obj: {}, 或 []
+         .          .    154:func parseNextUnit(stream []byte, pObj unsafe.Pointer, tis map[string]*TagInfo) (i int) {
+         .          .    155:	if len(stream) < 2 || stream[0] != '{' {
+ROUTINE ======================== memeqbody in /usr/local/go/src/internal/bytealg/equal_amd64.s
+      40ms       40ms (flat, cum)  1.93% of Total
+         .          .     98:	// 8 bytes at a time using 64-bit register
+         .          .     99:bigloop:
+         .          .    100:	CMPQ	BX, $8
+         .          .    101:	JBE	leftover
+         .          .    102:	MOVQ	(SI), CX
+      10ms       10ms    103:	MOVQ	(DI), DX
+         .          .    104:	ADDQ	$8, SI
+         .          .    105:	ADDQ	$8, DI
+         .          .    106:	SUBQ	$8, BX
+         .          .    107:	CMPQ	CX, DX
+         .          .    108:	JEQ	bigloop
+         .          .    109:	MOVB	$0, (AX)
+         .          .    110:	RET
+         .          .    111:
+         .          .    112:	// remaining 0-8 bytes
+         .          .    113:leftover:
+      10ms       10ms    114:	MOVQ	-8(SI)(BX*1), CX
+         .          .    115:	MOVQ	-8(DI)(BX*1), DX
+         .          .    116:	CMPQ	CX, DX
+         .          .    117:	SETEQ	(AX)
+         .          .    118:	RET
+         .          .    119:
+         .          .    120:small:
+         .          .    121:	CMPQ	BX, $0
+         .          .    122:	JEQ	equal
+         .          .    123:
+         .          .    124:	LEAQ	0(BX*8), CX
+         .          .    125:	NEGQ	CX
+         .          .    126:
+         .          .    127:	CMPB	SI, $0xf8
+         .          .    128:	JA	si_high
+         .          .    129:
+         .          .    130:	// load at SI won't cross a page boundary.
+         .          .    131:	MOVQ	(SI), SI
+         .          .    132:	JMP	si_finish
+         .          .    133:si_high:
+         .          .    134:	// address ends in 11111xxx. Load up to bytes we want, move to correct position.
+         .          .    135:	MOVQ	-8(SI)(BX*1), SI
+         .          .    136:	SHRQ	CX, SI
+         .          .    137:si_finish:
+         .          .    138:
+         .          .    139:	// same for DI.
+         .          .    140:	CMPB	DI, $0xf8
+         .          .    141:	JA	di_high
+         .          .    142:	MOVQ	(DI), DI
+         .          .    143:	JMP	di_finish
+         .          .    144:di_high:
+         .          .    145:	MOVQ	-8(DI)(BX*1), DI
+         .          .    146:	SHRQ	CX, DI
+         .          .    147:di_finish:
+         .          .    148:
+      10ms       10ms    149:	SUBQ	SI, DI
+         .          .    150:	SHLQ	CX, DI
+         .          .    151:equal:
+      10ms       10ms    152:	SETEQ	(AX)
+         .          .    153:	RET
+         .          .    154:
+ROUTINE ======================== reflect.(*rtype).Kind in /usr/local/go/src/reflect/type.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .    775:
+         .          .    776:func (t *rtype) Align() int { return int(t.align) }
+         .          .    777:
+         .          .    778:func (t *rtype) FieldAlign() int { return int(t.fieldAlign) }
+         .          .    779:
+      10ms       10ms    780:func (t *rtype) Kind() Kind { return Kind(t.kind & kindMask) }
+         .          .    781:
+         .          .    782:func (t *rtype) pointers() bool { return t.ptrdata != 0 }
+         .          .    783:
+         .          .    784:func (t *rtype) common() *rtype { return t }
+         .          .    785:
+ROUTINE ======================== reflect.(*rtype).PkgPath in /usr/local/go/src/reflect/type.go
+      10ms       20ms (flat, cum)  0.97% of Total
+         .          .    857:	}
+         .          .    858:	ut := t.uncommon()
+         .          .    859:	if ut == nil {
+         .          .    860:		return ""
+         .          .    861:	}
+      10ms       20ms    862:	return t.nameOff(ut.pkgPath).name()
+         .          .    863:}
+         .          .    864:
+         .          .    865:func (t *rtype) hasName() bool {
+         .          .    866:	return t.tflag&tflagNamed != 0
+         .          .    867:}
+ROUTINE ======================== reflect.(*rtype).Size in /usr/local/go/src/reflect/type.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .    758:		return s[1:]
+         .          .    759:	}
+         .          .    760:	return s
+         .          .    761:}
+         .          .    762:
+      20ms       20ms    763:func (t *rtype) Size() uintptr { return t.size }
+         .          .    764:
+         .          .    765:func (t *rtype) Bits() int {
+         .          .    766:	if t == nil {
+         .          .    767:		panic("reflect: Bits of nil Type")
+         .          .    768:	}
+ROUTINE ======================== reflect.(*rtype).nameOff in /usr/local/go/src/reflect/type.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .    681:type nameOff int32 // offset to a name
+         .          .    682:type typeOff int32 // offset to an *rtype
+         .          .    683:type textOff int32 // offset from top of text section
+         .          .    684:
+         .          .    685:func (t *rtype) nameOff(off nameOff) name {
+      10ms       10ms    686:	return name{(*byte)(resolveNameOff(unsafe.Pointer(t), int32(off)))}
+         .          .    687:}
+         .          .    688:
+         .          .    689:func (t *rtype) typeOff(off typeOff) *rtype {
+         .          .    690:	return (*rtype)(resolveTypeOff(unsafe.Pointer(t), int32(off)))
+         .          .    691:}
+ROUTINE ======================== runtime.(*addrRanges).removeGreaterEqual in /usr/local/go/src/runtime/mranges.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    346:		removed += r.size()
+         .          .    347:		r = r.removeGreaterEqual(addr)
+         .          .    348:		if r.size() == 0 {
+         .          .    349:			pivot--
+         .          .    350:		} else {
+         .       10ms    351:			removed -= r.size()
+         .          .    352:			a.ranges[pivot-1] = r
+         .          .    353:		}
+         .          .    354:	}
+         .          .    355:	a.ranges = a.ranges[:pivot]
+         .          .    356:	a.totalBytes -= removed
+ROUTINE ======================== runtime.(*gcControllerState).enlistWorker in /usr/local/go/src/runtime/mgc.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .    705:		}
+         .          .    706:		p := allp[id]
+         .          .    707:		if p.status != _Prunning {
+         .          .    708:			continue
+         .          .    709:		}
+         .       30ms    710:		if preemptone(p) {
+         .          .    711:			return
+         .          .    712:		}
+         .          .    713:	}
+         .          .    714:}
+         .          .    715:
+ROUTINE ======================== runtime.(*gcWork).balance in /usr/local/go/src/runtime/mgcwork.go
+         0       40ms (flat, cum)  1.93% of Total
+         .          .    290:	if wbuf := w.wbuf2; wbuf.nobj != 0 {
+         .          .    291:		putfull(wbuf)
+         .          .    292:		w.flushedWork = true
+         .          .    293:		w.wbuf2 = getempty()
+         .          .    294:	} else if wbuf := w.wbuf1; wbuf.nobj > 4 {
+         .       10ms    295:		w.wbuf1 = handoff(wbuf)
+         .          .    296:		w.flushedWork = true // handoff did putfull
+         .          .    297:	} else {
+         .          .    298:		return
+         .          .    299:	}
+         .          .    300:	// We flushed a buffer to the full list, so wake a worker.
+         .          .    301:	if gcphase == _GCmark {
+         .       30ms    302:		gcController.enlistWorker()
+         .          .    303:	}
+         .          .    304:}
+         .          .    305:
+         .          .    306:// empty reports whether w has no mark work available.
+         .          .    307://go:nowritebarrierrec
+ROUTINE ======================== runtime.(*lfstack).push in /usr/local/go/src/runtime/lfstack.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .     30:		throw("lfstack.push")
+         .          .     31:	}
+         .          .     32:	for {
+         .          .     33:		old := atomic.Load64((*uint64)(head))
+         .          .     34:		node.next = old
+      10ms       10ms     35:		if atomic.Cas64((*uint64)(head), old, new) {
+         .          .     36:			break
+         .          .     37:		}
+         .          .     38:	}
+         .          .     39:}
+         .          .     40:
+ROUTINE ======================== runtime.(*mcache).nextFree in /usr/local/go/src/runtime/malloc.go
+         0       80ms (flat, cum)  3.86% of Total
+         .          .    877:		// The span is full.
+         .          .    878:		if uintptr(s.allocCount) != s.nelems {
+         .          .    879:			println("runtime: s.allocCount=", s.allocCount, "s.nelems=", s.nelems)
+         .          .    880:			throw("s.allocCount != s.nelems && freeIndex == s.nelems")
+         .          .    881:		}
+         .       80ms    882:		c.refill(spc)
+         .          .    883:		shouldhelpgc = true
+         .          .    884:		s = c.alloc[spc]
+         .          .    885:
+         .          .    886:		freeIndex = s.nextFreeIndex()
+         .          .    887:	}
+ROUTINE ======================== runtime.(*mcache).refill in /usr/local/go/src/runtime/mcache.go
+         0       80ms (flat, cum)  3.86% of Total
+         .          .    157:		}
+         .          .    158:		mheap_.central[spc].mcentral.uncacheSpan(s)
+         .          .    159:	}
+         .          .    160:
+         .          .    161:	// Get a new cached span from the central lists.
+         .       80ms    162:	s = mheap_.central[spc].mcentral.cacheSpan()
+         .          .    163:	if s == nil {
+         .          .    164:		throw("out of memory")
+         .          .    165:	}
+         .          .    166:
+         .          .    167:	if uintptr(s.allocCount) == s.nelems {
+ROUTINE ======================== runtime.(*mcentral).cacheSpan in /usr/local/go/src/runtime/mcentral.go
+         0       80ms (flat, cum)  3.86% of Total
+         .          .    153:		traceGCSweepDone()
+         .          .    154:		traceDone = true
+         .          .    155:	}
+         .          .    156:
+         .          .    157:	// We failed to get a span from the mcentral so get one from mheap.
+         .       80ms    158:	s = c.grow()
+         .          .    159:	if s == nil {
+         .          .    160:		return nil
+         .          .    161:	}
+         .          .    162:
+         .          .    163:	// At this point s is a span that should have free slots.
+ROUTINE ======================== runtime.(*mcentral).grow in /usr/local/go/src/runtime/mcentral.go
+         0       80ms (flat, cum)  3.86% of Total
+         .          .    227:// grow allocates a new empty span from the heap and initializes it for c's size class.
+         .          .    228:func (c *mcentral) grow() *mspan {
+         .          .    229:	npages := uintptr(class_to_allocnpages[c.spanclass.sizeclass()])
+         .          .    230:	size := uintptr(class_to_size[c.spanclass.sizeclass()])
+         .          .    231:
+         .       70ms    232:	s := mheap_.alloc(npages, c.spanclass, true)
+         .          .    233:	if s == nil {
+         .          .    234:		return nil
+         .          .    235:	}
+         .          .    236:
+         .          .    237:	// Use division by multiplication and shifts to quickly compute:
+         .          .    238:	// n := (npages << _PageShift) / size
+         .          .    239:	n := (npages << _PageShift) >> s.divShift * uintptr(s.divMul) >> s.divShift2
+         .          .    240:	s.limit = s.base() + size*n
+         .       10ms    241:	heapBitsForAddr(s.base()).initSpan(s)
+         .          .    242:	return s
+         .          .    243:}
+ROUTINE ======================== runtime.(*mheap).alloc in /usr/local/go/src/runtime/mheap.go
+         0       70ms (flat, cum)  3.38% of Total
+         .          .    899:func (h *mheap) alloc(npages uintptr, spanclass spanClass, needzero bool) *mspan {
+         .          .    900:	// Don't do any operations that lock the heap on the G stack.
+         .          .    901:	// It might trigger stack growth, and the stack growth code needs
+         .          .    902:	// to be able to allocate heap.
+         .          .    903:	var s *mspan
+         .       30ms    904:	systemstack(func() {
+         .          .    905:		// To prevent excessive heap growth, before allocating n pages
+         .          .    906:		// we need to sweep and reclaim at least n pages.
+         .          .    907:		if h.sweepdone == 0 {
+         .          .    908:			h.reclaim(npages)
+         .          .    909:		}
+         .          .    910:		s = h.allocSpan(npages, spanAllocHeap, spanclass)
+         .          .    911:	})
+         .          .    912:
+         .          .    913:	if s != nil {
+         .          .    914:		if needzero && s.needzero != 0 {
+         .       40ms    915:			memclrNoHeapPointers(unsafe.Pointer(s.base()), s.npages<<_PageShift)
+         .          .    916:		}
+         .          .    917:		s.needzero = 0
+         .          .    918:	}
+         .          .    919:	return s
+         .          .    920:}
+ROUTINE ======================== runtime.(*mheap).alloc.func1 in /usr/local/go/src/runtime/mheap.go
+         0      150ms (flat, cum)  7.25% of Total
+         .          .    905:		// To prevent excessive heap growth, before allocating n pages
+         .          .    906:		// we need to sweep and reclaim at least n pages.
+         .          .    907:		if h.sweepdone == 0 {
+         .          .    908:			h.reclaim(npages)
+         .          .    909:		}
+         .      150ms    910:		s = h.allocSpan(npages, spanAllocHeap, spanclass)
+         .          .    911:	})
+         .          .    912:
+         .          .    913:	if s != nil {
+         .          .    914:		if needzero && s.needzero != 0 {
+         .          .    915:			memclrNoHeapPointers(unsafe.Pointer(s.base()), s.npages<<_PageShift)
+ROUTINE ======================== runtime.(*mheap).allocSpan in /usr/local/go/src/runtime/mheap.go
+         0      150ms (flat, cum)  7.25% of Total
+         .          .   1205:	unlock(&h.lock)
+         .          .   1206:
+         .          .   1207:HaveSpan:
+         .          .   1208:	// At this point, both s != nil and base != 0, and the heap
+         .          .   1209:	// lock is no longer held. Initialize the span.
+         .       30ms   1210:	s.init(base, npages)
+         .          .   1211:	if h.allocNeedsZero(base, npages) {
+         .          .   1212:		s.needzero = 1
+         .          .   1213:	}
+         .          .   1214:	nbytes := npages * pageSize
+         .          .   1215:	if typ.manual() {
+         .          .   1216:		s.manualFreeList = 0
+         .          .   1217:		s.nelems = 0
+         .          .   1218:		s.limit = s.base() + s.npages*pageSize
+         .          .   1219:		s.state.set(mSpanManual)
+         .          .   1220:	} else {
+         .          .   1221:		// We must set span properties before the span is published anywhere
+         .          .   1222:		// since we're not holding the heap lock.
+         .          .   1223:		s.spanclass = spanclass
+         .          .   1224:		if sizeclass := spanclass.sizeclass(); sizeclass == 0 {
+         .          .   1225:			s.elemsize = nbytes
+         .          .   1226:			s.nelems = 1
+         .          .   1227:
+         .          .   1228:			s.divShift = 0
+         .          .   1229:			s.divMul = 0
+         .          .   1230:			s.divShift2 = 0
+         .          .   1231:			s.baseMask = 0
+         .          .   1232:		} else {
+         .          .   1233:			s.elemsize = uintptr(class_to_size[sizeclass])
+         .          .   1234:			s.nelems = nbytes / s.elemsize
+         .          .   1235:
+         .          .   1236:			m := &class_to_divmagic[sizeclass]
+         .          .   1237:			s.divShift = m.shift
+         .          .   1238:			s.divMul = m.mul
+         .          .   1239:			s.divShift2 = m.shift2
+         .          .   1240:			s.baseMask = m.baseMask
+         .          .   1241:		}
+         .          .   1242:
+         .          .   1243:		// Initialize mark and allocation structures.
+         .          .   1244:		s.freeindex = 0
+         .          .   1245:		s.allocCache = ^uint64(0) // all 1s indicating all free.
+         .          .   1246:		s.gcmarkBits = newMarkBits(s.nelems)
+         .          .   1247:		s.allocBits = newAllocBits(s.nelems)
+         .          .   1248:
+         .          .   1249:		// It's safe to access h.sweepgen without the heap lock because it's
+         .          .   1250:		// only ever updated with the world stopped and we run on the
+         .          .   1251:		// systemstack which blocks a STW transition.
+         .          .   1252:		atomic.PoolStore(&s.sweepgen, h.sweepgen)
+         .          .   1253:
+         .          .   1254:		// Now that the span is filled in, set its state. This
+         .          .   1255:		// is a publication barrier for the other fields in
+         .          .   1256:		// the span. While valid pointers into this span
+         .          .   1257:		// should never be visible until the span is returned,
+         .          .   1258:		// if the garbage collector finds an invalid pointer,
+         .          .   1259:		// access to the span may race with initialization of
+         .          .   1260:		// the span. We resolve this race by atomically
+         .          .   1261:		// setting the state after the span is fully
+         .          .   1262:		// initialized, and atomically checking the state in
+         .          .   1263:		// any situation where a pointer is suspect.
+         .          .   1264:		s.state.set(mSpanInUse)
+         .          .   1265:	}
+         .          .   1266:
+         .          .   1267:	// Commit and account for any scavenged memory that the span now owns.
+         .          .   1268:	if scav != 0 {
+         .          .   1269:		// sysUsed all the pages that are actually available
+         .          .   1270:		// in the span since some of them might be scavenged.
+         .      120ms   1271:		sysUsed(unsafe.Pointer(base), nbytes)
+         .          .   1272:		atomic.Xadd64(&memstats.heap_released, -int64(scav))
+         .          .   1273:	}
+         .          .   1274:	// Update stats.
+         .          .   1275:	if typ == spanAllocHeap {
+         .          .   1276:		atomic.Xadd64(&memstats.heap_inuse, int64(nbytes))
+ROUTINE ======================== runtime.(*mspan).init in /usr/local/go/src/runtime/mheap.go
+      30ms       30ms (flat, cum)  1.45% of Total
+         .          .   1522:}
+         .          .   1523:
+         .          .   1524:// Initialize a new span with the given start and npages.
+         .          .   1525:func (span *mspan) init(base uintptr, npages uintptr) {
+         .          .   1526:	// span is *not* zeroed.
+      30ms       30ms   1527:	span.next = nil
+         .          .   1528:	span.prev = nil
+         .          .   1529:	span.list = nil
+         .          .   1530:	span.startAddr = base
+         .          .   1531:	span.npages = npages
+         .          .   1532:	span.allocCount = 0
+ROUTINE ======================== runtime.(*pageAlloc).scavenge in /usr/local/go/src/runtime/mgcscavenge.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    404:		gen   uint32
+         .          .    405:	)
+         .          .    406:	released := uintptr(0)
+         .          .    407:	for released < nbytes {
+         .          .    408:		if addrs.size() == 0 {
+         .       10ms    409:			if addrs, gen = p.scavengeReserve(); addrs.size() == 0 {
+         .          .    410:				break
+         .          .    411:			}
+         .          .    412:		}
+         .          .    413:		r, a := p.scavengeOne(addrs, nbytes-released, mayUnlock)
+         .          .    414:		released += r
+ROUTINE ======================== runtime.(*pageAlloc).scavengeReserve in /usr/local/go/src/runtime/mgcscavenge.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    515:	// the scavenger, so align down, potentially extending
+         .          .    516:	// the range.
+         .          .    517:	newBase := alignDown(r.base.addr(), pallocChunkBytes)
+         .          .    518:
+         .          .    519:	// Remove from inUse however much extra we just pulled out.
+         .       10ms    520:	p.scav.inUse.removeGreaterEqual(newBase)
+         .          .    521:	r.base = offAddr{newBase}
+         .          .    522:	return r, p.scav.gen
+         .          .    523:}
+         .          .    524:
+         .          .    525:// scavengeUnreserve returns an unscavenged portion of a range that was
+ROUTINE ======================== runtime.add in /usr/local/go/src/runtime/stubs.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .      7:import "unsafe"
+         .          .      8:
+         .          .      9:// Should be a built-in for unsafe.Pointer?
+         .          .     10://go:nosplit
+         .          .     11:func add(p unsafe.Pointer, x uintptr) unsafe.Pointer {
+      10ms       10ms     12:	return unsafe.Pointer(uintptr(p) + x)
+         .          .     13:}
+         .          .     14:
+         .          .     15:// getg returns the pointer to the current g.
+         .          .     16:// The compiler rewrites calls to this function into instructions
+         .          .     17:// that fetch the g directly (from TLS or from the dedicated register).
+ROUTINE ======================== runtime.addrRange.size in /usr/local/go/src/runtime/mranges.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .     42:	if !a.base.lessThan(a.limit) {
+         .          .     43:		return 0
+         .          .     44:	}
+         .          .     45:	// Subtraction is safe because limit and base must be in the same
+         .          .     46:	// segment of the address space.
+      10ms       10ms     47:	return a.limit.diff(a.base)
+         .          .     48:}
+         .          .     49:
+         .          .     50:// contains returns whether or not the range contains a given address.
+         .          .     51:func (a addrRange) contains(addr uintptr) bool {
+         .          .     52:	return a.base.lessEqual(offAddr{addr}) && (offAddr{addr}).lessThan(a.limit)
+ROUTINE ======================== runtime.bgscavenge in /usr/local/go/src/runtime/mgcscavenge.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    287:		// Time in scavenging critical section.
+         .          .    288:		crit := float64(0)
+         .          .    289:
+         .          .    290:		// Run on the system stack since we grab the heap lock,
+         .          .    291:		// and a stack growth with the heap lock means a deadlock.
+         .       10ms    292:		systemstack(func() {
+         .          .    293:			lock(&mheap_.lock)
+         .          .    294:
+         .          .    295:			// If background scavenging is disabled or if there's no work to do just park.
+         .          .    296:			retained, goal := heapRetained(), mheap_.scavengeGoal
+         .          .    297:			if retained <= goal {
+ROUTINE ======================== runtime.bgscavenge.func2 in /usr/local/go/src/runtime/mgcscavenge.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    299:				return
+         .          .    300:			}
+         .          .    301:
+         .          .    302:			// Scavenge one page, and measure the amount of time spent scavenging.
+         .          .    303:			start := nanotime()
+         .       10ms    304:			released = mheap_.pages.scavenge(physPageSize, true)
+         .          .    305:			mheap_.pages.scav.released += released
+         .          .    306:			crit = float64(nanotime() - start)
+         .          .    307:
+         .          .    308:			unlock(&mheap_.lock)
+         .          .    309:		})
+ROUTINE ======================== runtime.bucketMask in /usr/local/go/src/runtime/map.go
+      10ms       20ms (flat, cum)  0.97% of Total
+         .          .    185:	return uintptr(1) << (b & (sys.PtrSize*8 - 1))
+         .          .    186:}
+         .          .    187:
+         .          .    188:// bucketMask returns 1<<b - 1, optimized for code generation.
+         .          .    189:func bucketMask(b uint8) uintptr {
+      10ms       20ms    190:	return bucketShift(b) - 1
+         .          .    191:}
+         .          .    192:
+         .          .    193:// tophash calculates the tophash value for hash.
+         .          .    194:func tophash(hash uintptr) uint8 {
+         .          .    195:	top := uint8(hash >> (sys.PtrSize*8 - 8))
+ROUTINE ======================== runtime.bucketShift in /usr/local/go/src/runtime/map.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .    180:}
+         .          .    181:
+         .          .    182:// bucketShift returns 1<<b, optimized for code generation.
+         .          .    183:func bucketShift(b uint8) uintptr {
+         .          .    184:	// Masking the shift amount allows overflow checks to be elided.
+      10ms       10ms    185:	return uintptr(1) << (b & (sys.PtrSize*8 - 1))
+         .          .    186:}
+         .          .    187:
+         .          .    188:// bucketMask returns 1<<b - 1, optimized for code generation.
+         .          .    189:func bucketMask(b uint8) uintptr {
+         .          .    190:	return bucketShift(b) - 1
+ROUTINE ======================== runtime.checkTimers in /usr/local/go/src/runtime/proc.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .   3244:		// No timers to run or adjust.
+         .          .   3245:		return now, 0, false
+         .          .   3246:	}
+         .          .   3247:
+         .          .   3248:	if now == 0 {
+         .       10ms   3249:		now = nanotime()
+         .          .   3250:	}
+         .          .   3251:	if now < next {
+         .          .   3252:		// Next timer is not ready to run, but keep going
+         .          .   3253:		// if we would clear deleted timers.
+         .          .   3254:		// This corresponds to the condition below where
+ROUTINE ======================== runtime.concatstring3 in /usr/local/go/src/runtime/string.go
+      10ms       80ms (flat, cum)  3.86% of Total
+         .          .     58:func concatstring2(buf *tmpBuf, a [2]string) string {
+         .          .     59:	return concatstrings(buf, a[:])
+         .          .     60:}
+         .          .     61:
+         .          .     62:func concatstring3(buf *tmpBuf, a [3]string) string {
+      10ms       80ms     63:	return concatstrings(buf, a[:])
+         .          .     64:}
+         .          .     65:
+         .          .     66:func concatstring4(buf *tmpBuf, a [4]string) string {
+         .          .     67:	return concatstrings(buf, a[:])
+         .          .     68:}
+ROUTINE ======================== runtime.concatstrings in /usr/local/go/src/runtime/string.go
+      10ms       70ms (flat, cum)  3.38% of Total
+         .          .     45:	// or our result does not escape the calling frame (buf != nil),
+         .          .     46:	// then we can return that string directly.
+         .          .     47:	if count == 1 && (buf != nil || !stringDataOnStack(a[idx])) {
+         .          .     48:		return a[idx]
+         .          .     49:	}
+         .       40ms     50:	s, b := rawstringtmp(buf, l)
+         .          .     51:	for _, x := range a {
+      10ms       30ms     52:		copy(b, x)
+         .          .     53:		b = b[len(x):]
+         .          .     54:	}
+         .          .     55:	return s
+         .          .     56:}
+         .          .     57:
+ROUTINE ======================== runtime.duffcopy in /usr/local/go/src/runtime/duff_amd64.s
+      40ms       40ms (flat, cum)  1.93% of Total
+         .          .    398:	ADDQ	$16, SI
+         .          .    399:	MOVUPS	X0, (DI)
+         .          .    400:	ADDQ	$16, DI
+         .          .    401:
+         .          .    402:	MOVUPS	(SI), X0
+      10ms       10ms    403:	ADDQ	$16, SI
+      10ms       10ms    404:	MOVUPS	X0, (DI)
+         .          .    405:	ADDQ	$16, DI
+         .          .    406:
+         .          .    407:	MOVUPS	(SI), X0
+         .          .    408:	ADDQ	$16, SI
+         .          .    409:	MOVUPS	X0, (DI)
+         .          .    410:	ADDQ	$16, DI
+         .          .    411:
+         .          .    412:	MOVUPS	(SI), X0
+         .          .    413:	ADDQ	$16, SI
+         .          .    414:	MOVUPS	X0, (DI)
+      10ms       10ms    415:	ADDQ	$16, DI
+         .          .    416:
+         .          .    417:	MOVUPS	(SI), X0
+         .          .    418:	ADDQ	$16, SI
+         .          .    419:	MOVUPS	X0, (DI)
+         .          .    420:	ADDQ	$16, DI
+         .          .    421:
+         .          .    422:	MOVUPS	(SI), X0
+         .          .    423:	ADDQ	$16, SI
+         .          .    424:	MOVUPS	X0, (DI)
+      10ms       10ms    425:	ADDQ	$16, DI
+         .          .    426:
+         .          .    427:	RET
+ROUTINE ======================== runtime.findrunnable in /usr/local/go/src/runtime/proc.go
+         0       60ms (flat, cum)  2.90% of Total
+         .          .   2695:			// is probably a waste of time.
+         .          .   2696:			//
+         .          .   2697:			// timerpMask tells us whether the P may have timers at all. If it
+         .          .   2698:			// can't, no need to check at all.
+         .          .   2699:			if stealTimersOrRunNextG && timerpMask.read(enum.position()) {
+         .       10ms   2700:				tnow, w, ran := checkTimers(p2, now)
+         .          .   2701:				now = tnow
+         .          .   2702:				if w != 0 && (pollUntil == 0 || w < pollUntil) {
+         .          .   2703:					pollUntil = w
+         .          .   2704:				}
+         .          .   2705:				if ran {
+         .          .   2706:					// Running the timers may have
+         .          .   2707:					// made an arbitrary number of G's
+         .          .   2708:					// ready and added them to this P's
+         .          .   2709:					// local run queue. That invalidates
+         .          .   2710:					// the assumption of runqsteal
+         .          .   2711:					// that is always has room to add
+         .          .   2712:					// stolen G's. So check now if there
+         .          .   2713:					// is a local G to run.
+         .          .   2714:					if gp, inheritTime := runqget(_p_); gp != nil {
+         .          .   2715:						return gp, inheritTime
+         .          .   2716:					}
+         .          .   2717:					ranTimer = true
+         .          .   2718:				}
+         .          .   2719:			}
+         .          .   2720:
+         .          .   2721:			// Don't bother to attempt to steal if p2 is idle.
+         .          .   2722:			if !idlepMask.read(enum.position()) {
+         .          .   2723:				if gp := runqsteal(_p_, p2, stealTimersOrRunNextG); gp != nil {
+         .          .   2724:					return gp, false
+         .          .   2725:				}
+         .          .   2726:			}
+         .          .   2727:		}
+         .          .   2728:	}
+         .          .   2729:	if ranTimer {
+         .          .   2730:		// Running a timer may have made some goroutine ready.
+         .          .   2731:		goto top
+         .          .   2732:	}
+         .          .   2733:
+         .          .   2734:stop:
+         .          .   2735:
+         .          .   2736:	// We have nothing to do. If we're in the GC mark phase, can
+         .          .   2737:	// safely scan and blacken objects, and have work to do, run
+         .          .   2738:	// idle-time marking rather than give up the P.
+         .          .   2739:	if gcBlackenEnabled != 0 && gcMarkWorkAvailable(_p_) {
+         .          .   2740:		node := (*gcBgMarkWorkerNode)(gcBgMarkWorkerPool.pop())
+         .          .   2741:		if node != nil {
+         .          .   2742:			_p_.gcMarkWorkerMode = gcMarkWorkerIdleMode
+         .          .   2743:			gp := node.gp.ptr()
+         .          .   2744:			casgstatus(gp, _Gwaiting, _Grunnable)
+         .          .   2745:			if trace.enabled {
+         .          .   2746:				traceGoUnpark(gp, 0)
+         .          .   2747:			}
+         .          .   2748:			return gp, false
+         .          .   2749:		}
+         .          .   2750:	}
+         .          .   2751:
+         .          .   2752:	delta := int64(-1)
+         .          .   2753:	if pollUntil != 0 {
+         .          .   2754:		// checkTimers ensures that polluntil > now.
+         .          .   2755:		delta = pollUntil - now
+         .          .   2756:	}
+         .          .   2757:
+         .          .   2758:	// wasm only:
+         .          .   2759:	// If a callback returned and no other goroutine is awake,
+         .          .   2760:	// then wake event handler goroutine which pauses execution
+         .          .   2761:	// until a callback was triggered.
+         .          .   2762:	gp, otherReady := beforeIdle(delta)
+         .          .   2763:	if gp != nil {
+         .          .   2764:		casgstatus(gp, _Gwaiting, _Grunnable)
+         .          .   2765:		if trace.enabled {
+         .          .   2766:			traceGoUnpark(gp, 0)
+         .          .   2767:		}
+         .          .   2768:		return gp, false
+         .          .   2769:	}
+         .          .   2770:	if otherReady {
+         .          .   2771:		goto top
+         .          .   2772:	}
+         .          .   2773:
+         .          .   2774:	// Before we drop our P, make a snapshot of the allp slice,
+         .          .   2775:	// which can change underfoot once we no longer block
+         .          .   2776:	// safe-points. We don't need to snapshot the contents because
+         .          .   2777:	// everything up to cap(allp) is immutable.
+         .          .   2778:	allpSnapshot := allp
+         .          .   2779:	// Also snapshot masks. Value changes are OK, but we can't allow
+         .          .   2780:	// len to change out from under us.
+         .          .   2781:	idlepMaskSnapshot := idlepMask
+         .          .   2782:	timerpMaskSnapshot := timerpMask
+         .          .   2783:
+         .          .   2784:	// return P and block
+         .          .   2785:	lock(&sched.lock)
+         .          .   2786:	if sched.gcwaiting != 0 || _p_.runSafePointFn != 0 {
+         .          .   2787:		unlock(&sched.lock)
+         .          .   2788:		goto top
+         .          .   2789:	}
+         .          .   2790:	if sched.runqsize != 0 {
+         .          .   2791:		gp := globrunqget(_p_, 0)
+         .          .   2792:		unlock(&sched.lock)
+         .          .   2793:		return gp, false
+         .          .   2794:	}
+         .          .   2795:	if releasep() != _p_ {
+         .          .   2796:		throw("findrunnable: wrong p")
+         .          .   2797:	}
+         .          .   2798:	pidleput(_p_)
+         .          .   2799:	unlock(&sched.lock)
+         .          .   2800:
+         .          .   2801:	// Delicate dance: thread transitions from spinning to non-spinning state,
+         .          .   2802:	// potentially concurrently with submission of new goroutines. We must
+         .          .   2803:	// drop nmspinning first and then check all per-P queues again (with
+         .          .   2804:	// #StoreLoad memory barrier in between). If we do it the other way around,
+         .          .   2805:	// another thread can submit a goroutine after we've checked all run queues
+         .          .   2806:	// but before we drop nmspinning; as a result nobody will unpark a thread
+         .          .   2807:	// to run the goroutine.
+         .          .   2808:	// If we discover new work below, we need to restore m.spinning as a signal
+         .          .   2809:	// for resetspinning to unpark a new worker thread (because there can be more
+         .          .   2810:	// than one starving goroutine). However, if after discovering new work
+         .          .   2811:	// we also observe no idle Ps, it is OK to just park the current thread:
+         .          .   2812:	// the system is fully loaded so no spinning threads are required.
+         .          .   2813:	// Also see "Worker thread parking/unparking" comment at the top of the file.
+         .          .   2814:	wasSpinning := _g_.m.spinning
+         .          .   2815:	if _g_.m.spinning {
+         .          .   2816:		_g_.m.spinning = false
+         .          .   2817:		if int32(atomic.Xadd(&sched.nmspinning, -1)) < 0 {
+         .          .   2818:			throw("findrunnable: negative nmspinning")
+         .          .   2819:		}
+         .          .   2820:	}
+         .          .   2821:
+         .          .   2822:	// check all runqueues once again
+         .          .   2823:	for id, _p_ := range allpSnapshot {
+         .          .   2824:		if !idlepMaskSnapshot.read(uint32(id)) && !runqempty(_p_) {
+         .          .   2825:			lock(&sched.lock)
+         .          .   2826:			_p_ = pidleget()
+         .          .   2827:			unlock(&sched.lock)
+         .          .   2828:			if _p_ != nil {
+         .          .   2829:				acquirep(_p_)
+         .          .   2830:				if wasSpinning {
+         .          .   2831:					_g_.m.spinning = true
+         .          .   2832:					atomic.Xadd(&sched.nmspinning, 1)
+         .          .   2833:				}
+         .          .   2834:				goto top
+         .          .   2835:			}
+         .          .   2836:			break
+         .          .   2837:		}
+         .          .   2838:	}
+         .          .   2839:
+         .          .   2840:	// Similar to above, check for timer creation or expiry concurrently with
+         .          .   2841:	// transitioning from spinning to non-spinning. Note that we cannot use
+         .          .   2842:	// checkTimers here because it calls adjusttimers which may need to allocate
+         .          .   2843:	// memory, and that isn't allowed when we don't have an active P.
+         .          .   2844:	for id, _p_ := range allpSnapshot {
+         .          .   2845:		if timerpMaskSnapshot.read(uint32(id)) {
+         .          .   2846:			w := nobarrierWakeTime(_p_)
+         .          .   2847:			if w != 0 && (pollUntil == 0 || w < pollUntil) {
+         .          .   2848:				pollUntil = w
+         .          .   2849:			}
+         .          .   2850:		}
+         .          .   2851:	}
+         .          .   2852:	if pollUntil != 0 {
+         .          .   2853:		if now == 0 {
+         .          .   2854:			now = nanotime()
+         .          .   2855:		}
+         .          .   2856:		delta = pollUntil - now
+         .          .   2857:		if delta < 0 {
+         .          .   2858:			delta = 0
+         .          .   2859:		}
+         .          .   2860:	}
+         .          .   2861:
+         .          .   2862:	// Check for idle-priority GC work again.
+         .          .   2863:	//
+         .          .   2864:	// N.B. Since we have no P, gcBlackenEnabled may change at any time; we
+         .          .   2865:	// must check again after acquiring a P.
+         .          .   2866:	if atomic.Load(&gcBlackenEnabled) != 0 && gcMarkWorkAvailable(nil) {
+         .          .   2867:		// Work is available; we can start an idle GC worker only if
+         .          .   2868:		// there is an available P and available worker G.
+         .          .   2869:		//
+         .          .   2870:		// We can attempt to acquire these in either order. Workers are
+         .          .   2871:		// almost always available (see comment in findRunnableGCWorker
+         .          .   2872:		// for the one case there may be none). Since we're slightly
+         .          .   2873:		// less likely to find a P, check for that first.
+         .          .   2874:		lock(&sched.lock)
+         .          .   2875:		var node *gcBgMarkWorkerNode
+         .          .   2876:		_p_ = pidleget()
+         .          .   2877:		if _p_ != nil {
+         .          .   2878:			// Now that we own a P, gcBlackenEnabled can't change
+         .          .   2879:			// (as it requires STW).
+         .          .   2880:			if gcBlackenEnabled != 0 {
+         .          .   2881:				node = (*gcBgMarkWorkerNode)(gcBgMarkWorkerPool.pop())
+         .          .   2882:				if node == nil {
+         .          .   2883:					pidleput(_p_)
+         .          .   2884:					_p_ = nil
+         .          .   2885:				}
+         .          .   2886:			} else {
+         .          .   2887:				pidleput(_p_)
+         .          .   2888:				_p_ = nil
+         .          .   2889:			}
+         .          .   2890:		}
+         .          .   2891:		unlock(&sched.lock)
+         .          .   2892:		if _p_ != nil {
+         .          .   2893:			acquirep(_p_)
+         .          .   2894:			if wasSpinning {
+         .          .   2895:				_g_.m.spinning = true
+         .          .   2896:				atomic.Xadd(&sched.nmspinning, 1)
+         .          .   2897:			}
+         .          .   2898:
+         .          .   2899:			// Run the idle worker.
+         .          .   2900:			_p_.gcMarkWorkerMode = gcMarkWorkerIdleMode
+         .          .   2901:			gp := node.gp.ptr()
+         .          .   2902:			casgstatus(gp, _Gwaiting, _Grunnable)
+         .          .   2903:			if trace.enabled {
+         .          .   2904:				traceGoUnpark(gp, 0)
+         .          .   2905:			}
+         .          .   2906:			return gp, false
+         .          .   2907:		}
+         .          .   2908:	}
+         .          .   2909:
+         .          .   2910:	// poll network
+         .          .   2911:	if netpollinited() && (atomic.Load(&netpollWaiters) > 0 || pollUntil != 0) && atomic.Xchg64(&sched.lastpoll, 0) != 0 {
+         .          .   2912:		atomic.Store64(&sched.pollUntil, uint64(pollUntil))
+         .          .   2913:		if _g_.m.p != 0 {
+         .          .   2914:			throw("findrunnable: netpoll with p")
+         .          .   2915:		}
+         .          .   2916:		if _g_.m.spinning {
+         .          .   2917:			throw("findrunnable: netpoll with spinning")
+         .          .   2918:		}
+         .          .   2919:		if faketime != 0 {
+         .          .   2920:			// When using fake time, just poll.
+         .          .   2921:			delta = 0
+         .          .   2922:		}
+         .       10ms   2923:		list := netpoll(delta) // block until new work is available
+         .          .   2924:		atomic.Store64(&sched.pollUntil, 0)
+         .          .   2925:		atomic.Store64(&sched.lastpoll, uint64(nanotime()))
+         .          .   2926:		if faketime != 0 && list.empty() {
+         .          .   2927:			// Using fake time and nothing is ready; stop M.
+         .          .   2928:			// When all M's stop, checkdead will call timejump.
+         .          .   2929:			stopm()
+         .          .   2930:			goto top
+         .          .   2931:		}
+         .          .   2932:		lock(&sched.lock)
+         .          .   2933:		_p_ = pidleget()
+         .          .   2934:		unlock(&sched.lock)
+         .          .   2935:		if _p_ == nil {
+         .          .   2936:			injectglist(&list)
+         .          .   2937:		} else {
+         .          .   2938:			acquirep(_p_)
+         .          .   2939:			if !list.empty() {
+         .          .   2940:				gp := list.pop()
+         .          .   2941:				injectglist(&list)
+         .          .   2942:				casgstatus(gp, _Gwaiting, _Grunnable)
+         .          .   2943:				if trace.enabled {
+         .          .   2944:					traceGoUnpark(gp, 0)
+         .          .   2945:				}
+         .          .   2946:				return gp, false
+         .          .   2947:			}
+         .          .   2948:			if wasSpinning {
+         .          .   2949:				_g_.m.spinning = true
+         .          .   2950:				atomic.Xadd(&sched.nmspinning, 1)
+         .          .   2951:			}
+         .          .   2952:			goto top
+         .          .   2953:		}
+         .          .   2954:	} else if pollUntil != 0 && netpollinited() {
+         .          .   2955:		pollerPollUntil := int64(atomic.Load64(&sched.pollUntil))
+         .          .   2956:		if pollerPollUntil == 0 || pollerPollUntil > pollUntil {
+         .          .   2957:			netpollBreak()
+         .          .   2958:		}
+         .          .   2959:	}
+         .       40ms   2960:	stopm()
+         .          .   2961:	goto top
+         .          .   2962:}
+         .          .   2963:
+         .          .   2964:// pollWork reports whether there is non-background work this P could
+         .          .   2965:// be doing. This is a fairly lightweight check to be used for
+ROUTINE ======================== runtime.gcAssistAlloc.func1 in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    444:		traceGCMarkAssistStart()
+         .          .    445:	}
+         .          .    446:
+         .          .    447:	// Perform assist work
+         .          .    448:	systemstack(func() {
+         .       10ms    449:		gcAssistAlloc1(gp, scanWork)
+         .          .    450:		// The user stack may have moved, so this can't touch
+         .          .    451:		// anything on it until it returns from systemstack.
+         .          .    452:	})
+         .          .    453:
+         .          .    454:	completed := gp.param != nil
+ROUTINE ======================== runtime.gcAssistAlloc1 in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    533:	gp.waitreason = waitReasonGCAssistMarking
+         .          .    534:
+         .          .    535:	// drain own cached work first in the hopes that it
+         .          .    536:	// will be more cache friendly.
+         .          .    537:	gcw := &getg().m.p.ptr().gcw
+         .       10ms    538:	workDone := gcDrainN(gcw, scanWork)
+         .          .    539:
+         .          .    540:	casgstatus(gp, _Gwaiting, _Grunning)
+         .          .    541:
+         .          .    542:	// Record that we did this much scan work.
+         .          .    543:	//
+ROUTINE ======================== runtime.gcBgMarkWorker in /usr/local/go/src/runtime/mgc.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .   1962:		if decnwait == work.nproc {
+         .          .   1963:			println("runtime: work.nwait=", decnwait, "work.nproc=", work.nproc)
+         .          .   1964:			throw("work.nwait was > work.nproc")
+         .          .   1965:		}
+         .          .   1966:
+         .       30ms   1967:		systemstack(func() {
+         .          .   1968:			// Mark our goroutine preemptible so its stack
+         .          .   1969:			// can be scanned. This lets two mark workers
+         .          .   1970:			// scan each other (otherwise, they would
+         .          .   1971:			// deadlock). We must not modify anything on
+         .          .   1972:			// the G stack. However, stack shrinking is
+ROUTINE ======================== runtime.gcBgMarkWorker.func1 in /usr/local/go/src/runtime/mgc.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .   1929:				// after parking the G.
+         .          .   1930:				releasem(mp)
+         .          .   1931:			}
+         .          .   1932:
+         .          .   1933:			// Release this G to the pool.
+         .       10ms   1934:			gcBgMarkWorkerPool.push(&node.node)
+         .          .   1935:			// Note that at this point, the G may immediately be
+         .          .   1936:			// rescheduled and may be running.
+         .          .   1937:			return true
+         .          .   1938:		}, unsafe.Pointer(node), waitReasonGCWorkerIdle, traceEvGoBlock, 0)
+         .          .   1939:
+ROUTINE ======================== runtime.gcBgMarkWorker.func2 in /usr/local/go/src/runtime/mgc.go
+         0       50ms (flat, cum)  2.42% of Total
+         .          .   1975:			casgstatus(gp, _Grunning, _Gwaiting)
+         .          .   1976:			switch pp.gcMarkWorkerMode {
+         .          .   1977:			default:
+         .          .   1978:				throw("gcBgMarkWorker: unexpected gcMarkWorkerMode")
+         .          .   1979:			case gcMarkWorkerDedicatedMode:
+         .       10ms   1980:				gcDrain(&pp.gcw, gcDrainUntilPreempt|gcDrainFlushBgCredit)
+         .          .   1981:				if gp.preempt {
+         .          .   1982:					// We were preempted. This is
+         .          .   1983:					// a useful signal to kick
+         .          .   1984:					// everything out of the run
+         .          .   1985:					// queue so it can run
+         .          .   1986:					// somewhere else.
+         .          .   1987:					lock(&sched.lock)
+         .          .   1988:					for {
+         .          .   1989:						gp, _ := runqget(pp)
+         .          .   1990:						if gp == nil {
+         .          .   1991:							break
+         .          .   1992:						}
+         .          .   1993:						globrunqput(gp)
+         .          .   1994:					}
+         .          .   1995:					unlock(&sched.lock)
+         .          .   1996:				}
+         .          .   1997:				// Go back to draining, this time
+         .          .   1998:				// without preemption.
+         .       30ms   1999:				gcDrain(&pp.gcw, gcDrainFlushBgCredit)
+         .          .   2000:			case gcMarkWorkerFractionalMode:
+         .          .   2001:				gcDrain(&pp.gcw, gcDrainFractional|gcDrainUntilPreempt|gcDrainFlushBgCredit)
+         .          .   2002:			case gcMarkWorkerIdleMode:
+         .       10ms   2003:				gcDrain(&pp.gcw, gcDrainIdle|gcDrainUntilPreempt|gcDrainFlushBgCredit)
+         .          .   2004:			}
+         .          .   2005:			casgstatus(gp, _Gwaiting, _Grunning)
+         .          .   2006:		})
+         .          .   2007:
+         .          .   2008:		// Account for time.
+ROUTINE ======================== runtime.gcDrain in /usr/local/go/src/runtime/mgcmark.go
+         0       50ms (flat, cum)  2.42% of Total
+         .          .   1009:		for !(gp.preempt && (preemptible || atomic.Load(&sched.gcwaiting) != 0)) {
+         .          .   1010:			job := atomic.Xadd(&work.markrootNext, +1) - 1
+         .          .   1011:			if job >= work.markrootJobs {
+         .          .   1012:				break
+         .          .   1013:			}
+         .       10ms   1014:			markroot(gcw, job)
+         .          .   1015:			if check != nil && check() {
+         .          .   1016:				goto done
+         .          .   1017:			}
+         .          .   1018:		}
+         .          .   1019:	}
+         .          .   1020:
+         .          .   1021:	// Drain heap marking jobs.
+         .          .   1022:	// Stop if we're preemptible or if someone wants to STW.
+         .          .   1023:	for !(gp.preempt && (preemptible || atomic.Load(&sched.gcwaiting) != 0)) {
+         .          .   1024:		// Try to keep work available on the global queue. We used to
+         .          .   1025:		// check if there were waiting workers, but it's better to
+         .          .   1026:		// just keep work available than to make workers wait. In the
+         .          .   1027:		// worst case, we'll do O(log(_WorkbufSize)) unnecessary
+         .          .   1028:		// balances.
+         .          .   1029:		if work.full == 0 {
+         .       30ms   1030:			gcw.balance()
+         .          .   1031:		}
+         .          .   1032:
+         .          .   1033:		b := gcw.tryGetFast()
+         .          .   1034:		if b == 0 {
+         .          .   1035:			b = gcw.tryGet()
+         .          .   1036:			if b == 0 {
+         .          .   1037:				// Flush the write barrier
+         .          .   1038:				// buffer; this may create
+         .          .   1039:				// more work.
+         .          .   1040:				wbBufFlush(nil, 0)
+         .          .   1041:				b = gcw.tryGet()
+         .          .   1042:			}
+         .          .   1043:		}
+         .          .   1044:		if b == 0 {
+         .          .   1045:			// Unable to get work.
+         .          .   1046:			break
+         .          .   1047:		}
+         .       10ms   1048:		scanobject(b, gcw)
+         .          .   1049:
+         .          .   1050:		// Flush background scan work credit to the global
+         .          .   1051:		// account if we've accumulated enough locally so
+         .          .   1052:		// mutator assists can draw on it.
+         .          .   1053:		if gcw.scanWork >= gcCreditSlack {
+ROUTINE ======================== runtime.gcDrainN in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .   1103:
+         .          .   1104:	gp := getg().m.curg
+         .          .   1105:	for !gp.preempt && workFlushed+gcw.scanWork < scanWork {
+         .          .   1106:		// See gcDrain comment.
+         .          .   1107:		if work.full == 0 {
+         .       10ms   1108:			gcw.balance()
+         .          .   1109:		}
+         .          .   1110:
+         .          .   1111:		// This might be a good place to add prefetch code...
+         .          .   1112:		// if(wbuf.nobj > 4) {
+         .          .   1113:		//         PREFETCH(wbuf->obj[wbuf.nobj - 3];
+ROUTINE ======================== runtime.gcStart.func2 in /usr/local/go/src/runtime/mgc.go
+         0       70ms (flat, cum)  3.38% of Total
+         .          .   1438:	// returns, so make sure we're not preemptible.
+         .          .   1439:	mp = acquirem()
+         .          .   1440:
+         .          .   1441:	// Concurrent mark.
+         .          .   1442:	systemstack(func() {
+         .       70ms   1443:		now = startTheWorldWithSema(trace.enabled)
+         .          .   1444:		work.pauseNS += now - work.pauseStart
+         .          .   1445:		work.tMark = now
+         .          .   1446:		memstats.gcPauseDist.record(now - work.pauseStart)
+         .          .   1447:	})
+         .          .   1448:
+ROUTINE ======================== runtime.gentraceback in /usr/local/go/src/runtime/traceback.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    317:				frame.continpc = 0
+         .          .    318:			}
+         .          .    319:		}
+         .          .    320:
+         .          .    321:		if callback != nil {
+         .       10ms    322:			if !callback((*stkframe)(noescape(unsafe.Pointer(&frame))), v) {
+         .          .    323:				return n
+         .          .    324:			}
+         .          .    325:		}
+         .          .    326:
+         .          .    327:		if pcbuf != nil {
+ROUTINE ======================== runtime.handoff in /usr/local/go/src/runtime/mgcwork.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    431:	// Make new buffer with half of b's pointers.
+         .          .    432:	b1 := getempty()
+         .          .    433:	n := b.nobj / 2
+         .          .    434:	b.nobj -= n
+         .          .    435:	b1.nobj = n
+         .       10ms    436:	memmove(unsafe.Pointer(&b1.obj[0]), unsafe.Pointer(&b.obj[b.nobj]), uintptr(n)*unsafe.Sizeof(b1.obj[0]))
+         .          .    437:
+         .          .    438:	// Put b on full list - let first half of b get stolen.
+         .          .    439:	putfull(b)
+         .          .    440:	return b1
+         .          .    441:}
+ROUTINE ======================== runtime.heapBits.initSpan in /usr/local/go/src/runtime/mbitmap.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    760:			for i := uintptr(0); i < nbyte; i++ {
+         .          .    761:				*bitp = bitPointerAll | bitScanAll
+         .          .    762:				bitp = add1(bitp)
+         .          .    763:			}
+         .          .    764:		} else {
+         .       10ms    765:			memclrNoHeapPointers(unsafe.Pointer(h.bitp), nbyte)
+         .          .    766:		}
+         .          .    767:		h = hNext
+         .          .    768:		nw -= anw
+         .          .    769:	}
+         .          .    770:}
+ROUTINE ======================== runtime.heapBitsForAddr in /usr/local/go/src/runtime/mbitmap.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .    306:// nosplit because it is used during write barriers and must not be preempted.
+         .          .    307://go:nosplit
+         .          .    308:func heapBitsForAddr(addr uintptr) (h heapBits) {
+         .          .    309:	// 2 bits per word, 4 pairs per byte, and a mask is hard coded.
+         .          .    310:	arena := arenaIndex(addr)
+      10ms       10ms    311:	ha := mheap_.arenas[arena.l1()][arena.l2()]
+         .          .    312:	// The compiler uses a load for nil checking ha, but in this
+         .          .    313:	// case we'll almost never hit that cache line again, so it
+         .          .    314:	// makes more sense to do a value check.
+         .          .    315:	if ha == nil {
+         .          .    316:		// addr is not in the heap. Return nil heapBits, which
+         .          .    317:		// we expect to crash in the caller.
+         .          .    318:		return
+         .          .    319:	}
+         .          .    320:	h.bitp = &ha.bitmap[(addr/(sys.PtrSize*4))%heapArenaBitmapBytes]
+      10ms       10ms    321:	h.shift = uint32((addr / sys.PtrSize) & 3)
+         .          .    322:	h.arena = uint32(arena)
+         .          .    323:	h.last = &ha.bitmap[len(ha.bitmap)-1]
+         .          .    324:	return
+         .          .    325:}
+         .          .    326:
+ROUTINE ======================== runtime.heapBitsSetType in /usr/local/go/src/runtime/mbitmap.go
+      40ms       60ms (flat, cum)  2.90% of Total
+         .          .    844:			}
+         .          .    845:		}
+         .          .    846:		return
+         .          .    847:	}
+         .          .    848:
+         .       20ms    849:	h := heapBitsForAddr(x)
+         .          .    850:	ptrmask := typ.gcdata // start of 1-bit pointer mask (or GC program, handled below)
+         .          .    851:
+         .          .    852:	// 2-word objects only have 4 bitmap bits and 3-word objects only have 6 bitmap bits.
+         .          .    853:	// Therefore, these objects share a heap bitmap byte with the objects next to them.
+         .          .    854:	// These are called out as a special case primarily so the code below can assume all
+         .          .    855:	// objects are at least 4 words long and that their bitmaps start either at the beginning
+         .          .    856:	// of a bitmap byte, or half-way in (h.shift of 0 and 2 respectively).
+         .          .    857:
+         .          .    858:	if size == 2*sys.PtrSize {
+         .          .    859:		if typ.size == sys.PtrSize {
+         .          .    860:			// We're allocating a block big enough to hold two pointers.
+         .          .    861:			// On 64-bit, that means the actual object must be two pointers,
+         .          .    862:			// or else we'd have used the one-pointer-sized block.
+         .          .    863:			// On 32-bit, however, this is the 8-byte block, the smallest one.
+         .          .    864:			// So it could be that we're allocating one pointer and this was
+         .          .    865:			// just the smallest block available. Distinguish by checking dataSize.
+         .          .    866:			// (In general the number of instances of typ being allocated is
+         .          .    867:			// dataSize/typ.size.)
+         .          .    868:			if sys.PtrSize == 4 && dataSize == sys.PtrSize {
+         .          .    869:				// 1 pointer object. On 32-bit machines clear the bit for the
+         .          .    870:				// unused second word.
+         .          .    871:				*h.bitp &^= (bitPointer | bitScan | (bitPointer|bitScan)<<heapBitsShift) << h.shift
+         .          .    872:				*h.bitp |= (bitPointer | bitScan) << h.shift
+         .          .    873:			} else {
+         .          .    874:				// 2-element array of pointer.
+         .          .    875:				*h.bitp |= (bitPointer | bitScan | (bitPointer|bitScan)<<heapBitsShift) << h.shift
+         .          .    876:			}
+         .          .    877:			return
+         .          .    878:		}
+         .          .    879:		// Otherwise typ.size must be 2*sys.PtrSize,
+         .          .    880:		// and typ.kind&kindGCProg == 0.
+         .          .    881:		if doubleCheck {
+         .          .    882:			if typ.size != 2*sys.PtrSize || typ.kind&kindGCProg != 0 {
+         .          .    883:				print("runtime: heapBitsSetType size=", size, " but typ.size=", typ.size, " gcprog=", typ.kind&kindGCProg != 0, "\n")
+         .          .    884:				throw("heapBitsSetType")
+         .          .    885:			}
+         .          .    886:		}
+         .          .    887:		b := uint32(*ptrmask)
+         .          .    888:		hb := b & 3
+         .          .    889:		hb |= bitScanAll & ((bitScan << (typ.ptrdata / sys.PtrSize)) - 1)
+         .          .    890:		// Clear the bits for this object so we can set the
+         .          .    891:		// appropriate ones.
+         .          .    892:		*h.bitp &^= (bitPointer | bitScan | ((bitPointer | bitScan) << heapBitsShift)) << h.shift
+         .          .    893:		*h.bitp |= uint8(hb << h.shift)
+         .          .    894:		return
+      10ms       10ms    895:	} else if size == 3*sys.PtrSize {
+         .          .    896:		b := uint8(*ptrmask)
+         .          .    897:		if doubleCheck {
+         .          .    898:			if b == 0 {
+         .          .    899:				println("runtime: invalid type ", typ.string())
+         .          .    900:				throw("heapBitsSetType: called with non-pointer type")
+         .          .    901:			}
+         .          .    902:			if sys.PtrSize != 8 {
+         .          .    903:				throw("heapBitsSetType: unexpected 3 pointer wide size class on 32 bit")
+         .          .    904:			}
+         .          .    905:			if typ.kind&kindGCProg != 0 {
+         .          .    906:				throw("heapBitsSetType: unexpected GC prog for 3 pointer wide size class")
+         .          .    907:			}
+         .          .    908:			if typ.size == 2*sys.PtrSize {
+         .          .    909:				print("runtime: heapBitsSetType size=", size, " but typ.size=", typ.size, "\n")
+         .          .    910:				throw("heapBitsSetType: inconsistent object sizes")
+         .          .    911:			}
+         .          .    912:		}
+         .          .    913:		if typ.size == sys.PtrSize {
+         .          .    914:			// The type contains a pointer otherwise heapBitsSetType wouldn't have been called.
+         .          .    915:			// Since the type is only 1 pointer wide and contains a pointer, its gcdata must be exactly 1.
+         .          .    916:			if doubleCheck && *typ.gcdata != 1 {
+         .          .    917:				print("runtime: heapBitsSetType size=", size, " typ.size=", typ.size, "but *typ.gcdata", *typ.gcdata, "\n")
+         .          .    918:				throw("heapBitsSetType: unexpected gcdata for 1 pointer wide type size in 3 pointer wide size class")
+         .          .    919:			}
+         .          .    920:			// 3 element array of pointers. Unrolling ptrmask 3 times into p yields 00000111.
+         .          .    921:			b = 7
+         .          .    922:		}
+         .          .    923:
+         .          .    924:		hb := b & 7
+         .          .    925:		// Set bitScan bits for all pointers.
+         .          .    926:		hb |= hb << wordsPerBitmapByte
+         .          .    927:		// First bitScan bit is always set since the type contains pointers.
+         .          .    928:		hb |= bitScan
+         .          .    929:		// Second bitScan bit needs to also be set if the third bitScan bit is set.
+         .          .    930:		hb |= hb & (bitScan << (2 * heapBitsShift)) >> 1
+         .          .    931:
+         .          .    932:		// For h.shift > 1 heap bits cross a byte boundary and need to be written part
+         .          .    933:		// to h.bitp and part to the next h.bitp.
+         .          .    934:		switch h.shift {
+         .          .    935:		case 0:
+      20ms       20ms    936:			*h.bitp &^= mask3 << 0
+      10ms       10ms    937:			*h.bitp |= hb << 0
+         .          .    938:		case 1:
+         .          .    939:			*h.bitp &^= mask3 << 1
+         .          .    940:			*h.bitp |= hb << 1
+         .          .    941:		case 2:
+         .          .    942:			*h.bitp &^= mask2 << 2
+ROUTINE ======================== runtime.kevent in /usr/local/go/src/runtime/sys_darwin.go
+      90ms       90ms (flat, cum)  4.35% of Total
+         .          .    344:func kqueue_trampoline()
+         .          .    345:
+         .          .    346://go:nosplit
+         .          .    347://go:cgo_unsafe_args
+         .          .    348:func kevent(kq int32, ch *keventt, nch int32, ev *keventt, nev int32, ts *timespec) int32 {
+      90ms       90ms    349:	return libcCall(unsafe.Pointer(funcPC(kevent_trampoline)), unsafe.Pointer(&kq))
+         .          .    350:}
+         .          .    351:func kevent_trampoline()
+         .          .    352:
+         .          .    353://go:nosplit
+         .          .    354://go:cgo_unsafe_args
+ROUTINE ======================== runtime.mPark in /usr/local/go/src/runtime/proc.go
+         0       40ms (flat, cum)  1.93% of Total
+         .          .   1335:// only way that m's should park themselves.
+         .          .   1336://go:nosplit
+         .          .   1337:func mPark() {
+         .          .   1338:	g := getg()
+         .          .   1339:	for {
+         .       40ms   1340:		notesleep(&g.m.park)
+         .          .   1341:		// Note, because of signal handling by this parked m,
+         .          .   1342:		// a preemptive mDoFixup() may actually occur via
+         .          .   1343:		// mDoFixupAndOSYield(). (See golang.org/issue/44193)
+         .          .   1344:		noteclear(&g.m.park)
+         .          .   1345:		if !mDoFixup() {
+ROUTINE ======================== runtime.madvise in /usr/local/go/src/runtime/sys_darwin.go
+     120ms      120ms (flat, cum)  5.80% of Total
+         .          .    176:func munmap_trampoline()
+         .          .    177:
+         .          .    178://go:nosplit
+         .          .    179://go:cgo_unsafe_args
+         .          .    180:func madvise(addr unsafe.Pointer, n uintptr, flags int32) {
+     120ms      120ms    181:	libcCall(unsafe.Pointer(funcPC(madvise_trampoline)), unsafe.Pointer(&addr))
+         .          .    182:}
+         .          .    183:func madvise_trampoline()
+         .          .    184:
+         .          .    185://go:nosplit
+         .          .    186://go:cgo_unsafe_args
+ROUTINE ======================== runtime.mallocgc in /usr/local/go/src/runtime/malloc.go
+     120ms      310ms (flat, cum) 14.98% of Total
+         .          .    900:}
+         .          .    901:
+         .          .    902:// Allocate an object of size bytes.
+         .          .    903:// Small objects are allocated from the per-P cache's free lists.
+         .          .    904:// Large objects (> 32 kB) are allocated straight from the heap.
+      20ms       20ms    905:func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
+         .          .    906:	if gcphase == _GCmarktermination {
+         .          .    907:		throw("mallocgc called with gcphase == _GCmarktermination")
+         .          .    908:	}
+         .          .    909:
+         .          .    910:	if size == 0 {
+         .          .    911:		return unsafe.Pointer(&zerobase)
+         .          .    912:	}
+         .          .    913:
+         .          .    914:	if debug.malloc {
+         .          .    915:		if debug.sbrk != 0 {
+         .          .    916:			align := uintptr(16)
+         .          .    917:			if typ != nil {
+         .          .    918:				// TODO(austin): This should be just
+         .          .    919:				//   align = uintptr(typ.align)
+         .          .    920:				// but that's only 4 on 32-bit platforms,
+         .          .    921:				// even if there's a uint64 field in typ (see #599).
+         .          .    922:				// This causes 64-bit atomic accesses to panic.
+         .          .    923:				// Hence, we use stricter alignment that matches
+         .          .    924:				// the normal allocator better.
+         .          .    925:				if size&7 == 0 {
+         .          .    926:					align = 8
+         .          .    927:				} else if size&3 == 0 {
+         .          .    928:					align = 4
+         .          .    929:				} else if size&1 == 0 {
+         .          .    930:					align = 2
+         .          .    931:				} else {
+         .          .    932:					align = 1
+         .          .    933:				}
+         .          .    934:			}
+         .          .    935:			return persistentalloc(size, align, &memstats.other_sys)
+         .          .    936:		}
+         .          .    937:
+         .          .    938:		if inittrace.active && inittrace.id == getg().goid {
+         .          .    939:			// Init functions are executed sequentially in a single Go routine.
+         .          .    940:			inittrace.allocs += 1
+         .          .    941:		}
+         .          .    942:	}
+         .          .    943:
+         .          .    944:	// assistG is the G to charge for this allocation, or nil if
+         .          .    945:	// GC is not currently active.
+         .          .    946:	var assistG *g
+      10ms       10ms    947:	if gcBlackenEnabled != 0 {
+         .          .    948:		// Charge the current user G for this allocation.
+         .          .    949:		assistG = getg()
+         .          .    950:		if assistG.m.curg != nil {
+         .          .    951:			assistG = assistG.m.curg
+         .          .    952:		}
+         .          .    953:		// Charge the allocation against the G. We'll account
+         .          .    954:		// for internal fragmentation at the end of mallocgc.
+         .          .    955:		assistG.gcAssistBytes -= int64(size)
+         .          .    956:
+         .          .    957:		if assistG.gcAssistBytes < 0 {
+         .          .    958:			// This G is in debt. Assist the GC to correct
+         .          .    959:			// this before allocating. This must happen
+         .          .    960:			// before disabling preemption.
+         .          .    961:			gcAssistAlloc(assistG)
+         .          .    962:		}
+         .          .    963:	}
+         .          .    964:
+         .          .    965:	// Set mp.mallocing to keep from being preempted by GC.
+         .          .    966:	mp := acquirem()
+      10ms       10ms    967:	if mp.mallocing != 0 {
+         .          .    968:		throw("malloc deadlock")
+         .          .    969:	}
+         .          .    970:	if mp.gsignal == getg() {
+         .          .    971:		throw("malloc during signal")
+         .          .    972:	}
+         .          .    973:	mp.mallocing = 1
+         .          .    974:
+         .          .    975:	shouldhelpgc := false
+         .          .    976:	dataSize := size
+         .          .    977:	c := getMCache()
+         .          .    978:	if c == nil {
+         .          .    979:		throw("mallocgc called without a P or outside bootstrapping")
+         .          .    980:	}
+         .          .    981:	var span *mspan
+         .          .    982:	var x unsafe.Pointer
+         .          .    983:	noscan := typ == nil || typ.ptrdata == 0
+         .          .    984:	if size <= maxSmallSize {
+         .          .    985:		if noscan && size < maxTinySize {
+         .          .    986:			// Tiny allocator.
+         .          .    987:			//
+         .          .    988:			// Tiny allocator combines several tiny allocation requests
+         .          .    989:			// into a single memory block. The resulting memory block
+         .          .    990:			// is freed when all subobjects are unreachable. The subobjects
+         .          .    991:			// must be noscan (don't have pointers), this ensures that
+         .          .    992:			// the amount of potentially wasted memory is bounded.
+         .          .    993:			//
+         .          .    994:			// Size of the memory block used for combining (maxTinySize) is tunable.
+         .          .    995:			// Current setting is 16 bytes, which relates to 2x worst case memory
+         .          .    996:			// wastage (when all but one subobjects are unreachable).
+         .          .    997:			// 8 bytes would result in no wastage at all, but provides less
+         .          .    998:			// opportunities for combining.
+         .          .    999:			// 32 bytes provides more opportunities for combining,
+         .          .   1000:			// but can lead to 4x worst case wastage.
+         .          .   1001:			// The best case winning is 8x regardless of block size.
+         .          .   1002:			//
+         .          .   1003:			// Objects obtained from tiny allocator must not be freed explicitly.
+         .          .   1004:			// So when an object will be freed explicitly, we ensure that
+         .          .   1005:			// its size >= maxTinySize.
+         .          .   1006:			//
+         .          .   1007:			// SetFinalizer has a special case for objects potentially coming
+         .          .   1008:			// from tiny allocator, it such case it allows to set finalizers
+         .          .   1009:			// for an inner byte of a memory block.
+         .          .   1010:			//
+         .          .   1011:			// The main targets of tiny allocator are small strings and
+         .          .   1012:			// standalone escaping variables. On a json benchmark
+         .          .   1013:			// the allocator reduces number of allocations by ~12% and
+         .          .   1014:			// reduces heap size by ~20%.
+         .          .   1015:			off := c.tinyoffset
+         .          .   1016:			// Align tiny pointer for required (conservative) alignment.
+         .          .   1017:			if size&7 == 0 {
+         .          .   1018:				off = alignUp(off, 8)
+         .          .   1019:			} else if sys.PtrSize == 4 && size == 12 {
+         .          .   1020:				// Conservatively align 12-byte objects to 8 bytes on 32-bit
+         .          .   1021:				// systems so that objects whose first field is a 64-bit
+         .          .   1022:				// value is aligned to 8 bytes and does not cause a fault on
+         .          .   1023:				// atomic access. See issue 37262.
+         .          .   1024:				// TODO(mknyszek): Remove this workaround if/when issue 36606
+         .          .   1025:				// is resolved.
+         .          .   1026:				off = alignUp(off, 8)
+         .          .   1027:			} else if size&3 == 0 {
+         .          .   1028:				off = alignUp(off, 4)
+         .          .   1029:			} else if size&1 == 0 {
+         .          .   1030:				off = alignUp(off, 2)
+         .          .   1031:			}
+         .          .   1032:			if off+size <= maxTinySize && c.tiny != 0 {
+         .          .   1033:				// The object fits into existing tiny block.
+         .          .   1034:				x = unsafe.Pointer(c.tiny + off)
+         .          .   1035:				c.tinyoffset = off + size
+         .          .   1036:				c.tinyAllocs++
+         .          .   1037:				mp.mallocing = 0
+         .          .   1038:				releasem(mp)
+         .          .   1039:				return x
+         .          .   1040:			}
+         .          .   1041:			// Allocate a new maxTinySize block.
+         .          .   1042:			span = c.alloc[tinySpanClass]
+         .          .   1043:			v := nextFreeFast(span)
+         .          .   1044:			if v == 0 {
+         .          .   1045:				v, span, shouldhelpgc = c.nextFree(tinySpanClass)
+         .          .   1046:			}
+         .          .   1047:			x = unsafe.Pointer(v)
+      10ms       10ms   1048:			(*[2]uint64)(x)[0] = 0
+         .          .   1049:			(*[2]uint64)(x)[1] = 0
+         .          .   1050:			// See if we need to replace the existing tiny block with the new one
+         .          .   1051:			// based on amount of remaining free space.
+         .          .   1052:			if size < c.tinyoffset || c.tiny == 0 {
+         .          .   1053:				c.tiny = uintptr(x)
+         .          .   1054:				c.tinyoffset = size
+         .          .   1055:			}
+         .          .   1056:			size = maxTinySize
+         .          .   1057:		} else {
+         .          .   1058:			var sizeclass uint8
+         .          .   1059:			if size <= smallSizeMax-8 {
+      20ms       20ms   1060:				sizeclass = size_to_class8[divRoundUp(size, smallSizeDiv)]
+         .          .   1061:			} else {
+         .          .   1062:				sizeclass = size_to_class128[divRoundUp(size-smallSizeMax, largeSizeDiv)]
+         .          .   1063:			}
+      10ms       10ms   1064:			size = uintptr(class_to_size[sizeclass])
+         .          .   1065:			spc := makeSpanClass(sizeclass, noscan)
+         .          .   1066:			span = c.alloc[spc]
+         .       30ms   1067:			v := nextFreeFast(span)
+         .          .   1068:			if v == 0 {
+         .       80ms   1069:				v, span, shouldhelpgc = c.nextFree(spc)
+         .          .   1070:			}
+         .          .   1071:			x = unsafe.Pointer(v)
+         .          .   1072:			if needzero && span.needzero != 0 {
+         .          .   1073:				memclrNoHeapPointers(unsafe.Pointer(v), size)
+         .          .   1074:			}
+         .          .   1075:		}
+         .          .   1076:	} else {
+         .          .   1077:		shouldhelpgc = true
+         .          .   1078:		span = c.allocLarge(size, needzero, noscan)
+         .          .   1079:		span.freeindex = 1
+         .          .   1080:		span.allocCount = 1
+         .          .   1081:		x = unsafe.Pointer(span.base())
+         .          .   1082:		size = span.elemsize
+         .          .   1083:	}
+         .          .   1084:
+         .          .   1085:	var scanSize uintptr
+         .          .   1086:	if !noscan {
+         .          .   1087:		// If allocating a defer+arg block, now that we've picked a malloc size
+         .          .   1088:		// large enough to hold everything, cut the "asked for" size down to
+         .          .   1089:		// just the defer header, so that the GC bitmap will record the arg block
+         .          .   1090:		// as containing nothing at all (as if it were unused space at the end of
+         .          .   1091:		// a malloc block caused by size rounding).
+         .          .   1092:		// The defer arg areas are scanned as part of scanstack.
+         .          .   1093:		if typ == deferType {
+         .          .   1094:			dataSize = unsafe.Sizeof(_defer{})
+         .          .   1095:		}
+      10ms       70ms   1096:		heapBitsSetType(uintptr(x), size, dataSize, typ)
+         .          .   1097:		if dataSize > typ.size {
+         .          .   1098:			// Array allocation. If there are any
+         .          .   1099:			// pointers, GC has to scan to the last
+         .          .   1100:			// element.
+         .          .   1101:			if typ.ptrdata != 0 {
+         .          .   1102:				scanSize = dataSize - typ.size + typ.ptrdata
+         .          .   1103:			}
+         .          .   1104:		} else {
+         .          .   1105:			scanSize = typ.ptrdata
+         .          .   1106:		}
+         .          .   1107:		c.scanAlloc += scanSize
+         .          .   1108:	}
+         .          .   1109:
+         .          .   1110:	// Ensure that the stores above that initialize x to
+         .          .   1111:	// type-safe memory and set the heap bits occur before
+         .          .   1112:	// the caller can make x observable to the garbage
+         .          .   1113:	// collector. Otherwise, on weakly ordered machines,
+         .          .   1114:	// the garbage collector could follow a pointer to x,
+         .          .   1115:	// but see uninitialized memory or stale heap bits.
+         .          .   1116:	publicationBarrier()
+         .          .   1117:
+         .          .   1118:	// Allocate black during GC.
+         .          .   1119:	// All slots hold nil so no scanning is needed.
+         .          .   1120:	// This may be racing with GC so do it atomically if there can be
+         .          .   1121:	// a race marking the bit.
+      10ms       10ms   1122:	if gcphase != _GCoff {
+         .          .   1123:		gcmarknewobject(span, uintptr(x), size, scanSize)
+         .          .   1124:	}
+         .          .   1125:
+         .          .   1126:	if raceenabled {
+         .          .   1127:		racemalloc(x, size)
+         .          .   1128:	}
+         .          .   1129:
+         .          .   1130:	if msanenabled {
+         .          .   1131:		msanmalloc(x, size)
+         .          .   1132:	}
+         .          .   1133:
+         .          .   1134:	mp.mallocing = 0
+         .       20ms   1135:	releasem(mp)
+         .          .   1136:
+         .          .   1137:	if debug.malloc {
+         .          .   1138:		if debug.allocfreetrace != 0 {
+         .          .   1139:			tracealloc(x, size, typ)
+         .          .   1140:		}
+         .          .   1141:
+         .          .   1142:		if inittrace.active && inittrace.id == getg().goid {
+         .          .   1143:			// Init functions are executed sequentially in a single Go routine.
+         .          .   1144:			inittrace.bytes += uint64(size)
+         .          .   1145:		}
+         .          .   1146:	}
+         .          .   1147:
+         .          .   1148:	if rate := MemProfileRate; rate > 0 {
+      20ms       20ms   1149:		if rate != 1 && size < c.nextSample {
+         .          .   1150:			c.nextSample -= size
+         .          .   1151:		} else {
+         .          .   1152:			mp := acquirem()
+         .          .   1153:			profilealloc(mp, x, size)
+         .          .   1154:			releasem(mp)
+ROUTINE ======================== runtime.mapaccess1_faststr in /usr/local/go/src/runtime/map_faststr.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .     42:		}
+         .          .     43:		// long key, try not to do more comparisons than necessary
+         .          .     44:		keymaybe := uintptr(bucketCnt)
+         .          .     45:		for i, kptr := uintptr(0), b.keys(); i < bucketCnt; i, kptr = i+1, add(kptr, 2*sys.PtrSize) {
+         .          .     46:			k := (*stringStruct)(kptr)
+      10ms       10ms     47:			if k.len != key.len || isEmpty(b.tophash[i]) {
+         .          .     48:				if b.tophash[i] == emptyRest {
+         .          .     49:					break
+         .          .     50:				}
+         .          .     51:				continue
+         .          .     52:			}
+         .          .     53:			if k.str == key.str {
+         .          .     54:				return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+i*uintptr(t.elemsize))
+         .          .     55:			}
+         .          .     56:			// check first 4 bytes
+         .          .     57:			if *((*[4]byte)(key.str)) != *((*[4]byte)(k.str)) {
+         .          .     58:				continue
+         .          .     59:			}
+         .          .     60:			// check last 4 bytes
+         .          .     61:			if *((*[4]byte)(add(key.str, uintptr(key.len)-4))) != *((*[4]byte)(add(k.str, uintptr(key.len)-4))) {
+         .          .     62:				continue
+         .          .     63:			}
+         .          .     64:			if keymaybe != bucketCnt {
+         .          .     65:				// Two keys are potential matches. Use hash to distinguish them.
+         .          .     66:				goto dohash
+         .          .     67:			}
+         .          .     68:			keymaybe = i
+         .          .     69:		}
+         .          .     70:		if keymaybe != bucketCnt {
+         .          .     71:			k := (*stringStruct)(add(unsafe.Pointer(b), dataOffset+keymaybe*2*sys.PtrSize))
+      10ms       10ms     72:			if memequal(k.str, key.str, uintptr(key.len)) {
+         .          .     73:				return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+keymaybe*uintptr(t.elemsize))
+         .          .     74:			}
+         .          .     75:		}
+         .          .     76:		return unsafe.Pointer(&zeroVal[0])
+         .          .     77:	}
+ROUTINE ======================== runtime.mapaccess2_faststr in /usr/local/go/src/runtime/map_faststr.go
+     120ms      280ms (flat, cum) 13.53% of Total
+         .          .    102:		}
+         .          .    103:	}
+         .          .    104:	return unsafe.Pointer(&zeroVal[0])
+         .          .    105:}
+         .          .    106:
+      10ms       10ms    107:func mapaccess2_faststr(t *maptype, h *hmap, ky string) (unsafe.Pointer, bool) {
+         .          .    108:	if raceenabled && h != nil {
+         .          .    109:		callerpc := getcallerpc()
+         .          .    110:		racereadpc(unsafe.Pointer(h), callerpc, funcPC(mapaccess2_faststr))
+         .          .    111:	}
+         .          .    112:	if h == nil || h.count == 0 {
+         .          .    113:		return unsafe.Pointer(&zeroVal[0]), false
+         .          .    114:	}
+         .          .    115:	if h.flags&hashWriting != 0 {
+         .          .    116:		throw("concurrent map read and map write")
+         .          .    117:	}
+         .          .    118:	key := stringStructOf(&ky)
+      10ms       10ms    119:	if h.B == 0 {
+         .          .    120:		// One-bucket table.
+         .          .    121:		b := (*bmap)(h.buckets)
+         .          .    122:		if key.len < 32 {
+         .          .    123:			// short key, doing lots of comparisons is ok
+         .          .    124:			for i, kptr := uintptr(0), b.keys(); i < bucketCnt; i, kptr = i+1, add(kptr, 2*sys.PtrSize) {
+         .          .    125:				k := (*stringStruct)(kptr)
+         .          .    126:				if k.len != key.len || isEmpty(b.tophash[i]) {
+         .          .    127:					if b.tophash[i] == emptyRest {
+         .          .    128:						break
+         .          .    129:					}
+         .          .    130:					continue
+         .          .    131:				}
+         .          .    132:				if k.str == key.str || memequal(k.str, key.str, uintptr(key.len)) {
+         .          .    133:					return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+i*uintptr(t.elemsize)), true
+         .          .    134:				}
+         .          .    135:			}
+         .          .    136:			return unsafe.Pointer(&zeroVal[0]), false
+         .          .    137:		}
+         .          .    138:		// long key, try not to do more comparisons than necessary
+         .          .    139:		keymaybe := uintptr(bucketCnt)
+         .          .    140:		for i, kptr := uintptr(0), b.keys(); i < bucketCnt; i, kptr = i+1, add(kptr, 2*sys.PtrSize) {
+         .          .    141:			k := (*stringStruct)(kptr)
+         .          .    142:			if k.len != key.len || isEmpty(b.tophash[i]) {
+         .          .    143:				if b.tophash[i] == emptyRest {
+         .          .    144:					break
+         .          .    145:				}
+         .          .    146:				continue
+         .          .    147:			}
+         .          .    148:			if k.str == key.str {
+         .          .    149:				return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+i*uintptr(t.elemsize)), true
+         .          .    150:			}
+         .          .    151:			// check first 4 bytes
+         .          .    152:			if *((*[4]byte)(key.str)) != *((*[4]byte)(k.str)) {
+         .          .    153:				continue
+         .          .    154:			}
+         .          .    155:			// check last 4 bytes
+         .          .    156:			if *((*[4]byte)(add(key.str, uintptr(key.len)-4))) != *((*[4]byte)(add(k.str, uintptr(key.len)-4))) {
+         .          .    157:				continue
+         .          .    158:			}
+         .          .    159:			if keymaybe != bucketCnt {
+         .          .    160:				// Two keys are potential matches. Use hash to distinguish them.
+         .          .    161:				goto dohash
+         .          .    162:			}
+         .          .    163:			keymaybe = i
+         .          .    164:		}
+         .          .    165:		if keymaybe != bucketCnt {
+         .          .    166:			k := (*stringStruct)(add(unsafe.Pointer(b), dataOffset+keymaybe*2*sys.PtrSize))
+         .          .    167:			if memequal(k.str, key.str, uintptr(key.len)) {
+         .          .    168:				return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+keymaybe*uintptr(t.elemsize)), true
+         .          .    169:			}
+         .          .    170:		}
+         .          .    171:		return unsafe.Pointer(&zeroVal[0]), false
+         .          .    172:	}
+         .          .    173:dohash:
+      10ms       90ms    174:	hash := t.hasher(noescape(unsafe.Pointer(&ky)), uintptr(h.hash0))
+      20ms       40ms    175:	m := bucketMask(h.B)
+         .          .    176:	b := (*bmap)(add(h.buckets, (hash&m)*uintptr(t.bucketsize)))
+         .          .    177:	if c := h.oldbuckets; c != nil {
+         .          .    178:		if !h.sameSizeGrow() {
+         .          .    179:			// There used to be half as many buckets; mask down one more power of two.
+         .          .    180:			m >>= 1
+         .          .    181:		}
+         .          .    182:		oldb := (*bmap)(add(c, (hash&m)*uintptr(t.bucketsize)))
+         .          .    183:		if !evacuated(oldb) {
+         .          .    184:			b = oldb
+         .          .    185:		}
+         .          .    186:	}
+         .          .    187:	top := tophash(hash)
+         .          .    188:	for ; b != nil; b = b.overflow(t) {
+         .          .    189:		for i, kptr := uintptr(0), b.keys(); i < bucketCnt; i, kptr = i+1, add(kptr, 2*sys.PtrSize) {
+         .          .    190:			k := (*stringStruct)(kptr)
+      50ms       50ms    191:			if k.len != key.len || b.tophash[i] != top {
+         .          .    192:				continue
+         .          .    193:			}
+      10ms       60ms    194:			if k.str == key.str || memequal(k.str, key.str, uintptr(key.len)) {
+      10ms       20ms    195:				return add(unsafe.Pointer(b), dataOffset+bucketCnt*2*sys.PtrSize+i*uintptr(t.elemsize)), true
+         .          .    196:			}
+         .          .    197:		}
+         .          .    198:	}
+         .          .    199:	return unsafe.Pointer(&zeroVal[0]), false
+         .          .    200:}
+ROUTINE ======================== runtime.markroot in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    201:			gp.waitsince = work.tstart
+         .          .    202:		}
+         .          .    203:
+         .          .    204:		// scanstack must be done on the system stack in case
+         .          .    205:		// we're trying to scan our own stack.
+         .       10ms    206:		systemstack(func() {
+         .          .    207:			// If this is a self-scan, put the user G in
+         .          .    208:			// _Gwaiting to prevent self-deadlock. It may
+         .          .    209:			// already be in _Gwaiting if this is a mark
+         .          .    210:			// worker or we're in mark termination.
+         .          .    211:			userG := getg().m.curg
+ROUTINE ======================== runtime.markroot.func1 in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    228:				return
+         .          .    229:			}
+         .          .    230:			if gp.gcscandone {
+         .          .    231:				throw("g already scanned")
+         .          .    232:			}
+         .       10ms    233:			scanstack(gp, gcw)
+         .          .    234:			gp.gcscandone = true
+         .          .    235:			resumeG(stopped)
+         .          .    236:
+         .          .    237:			if selfScan {
+         .          .    238:				casgstatus(userG, _Gwaiting, _Grunning)
+ROUTINE ======================== runtime.mcall in /usr/local/go/src/runtime/asm_amd64.s
+         0       70ms (flat, cum)  3.38% of Total
+         .          .    322:	MOVQ	SI, g(CX)	// g = m->g0
+         .          .    323:	MOVQ	(g_sched+gobuf_sp)(SI), SP	// sp = m->g0->sched.sp
+         .          .    324:	PUSHQ	AX
+         .          .    325:	MOVQ	DI, DX
+         .          .    326:	MOVQ	0(DI), DI
+         .       70ms    327:	CALL	DI
+         .          .    328:	POPQ	AX
+         .          .    329:	MOVQ	$runtime·badmcall2(SB), AX
+         .          .    330:	JMP	AX
+         .          .    331:	RET
+         .          .    332:
+ROUTINE ======================== runtime.memclrNoHeapPointers in /usr/local/go/src/runtime/memclr_amd64.s
+      50ms       50ms (flat, cum)  2.42% of Total
+         .          .     34:	PXOR	X0, X0
+         .          .     35:	CMPQ	BX, $32
+         .          .     36:	JBE	_17through32
+         .          .     37:	CMPQ	BX, $64
+         .          .     38:	JBE	_33through64
+      10ms       10ms     39:	CMPQ	BX, $128
+         .          .     40:	JBE	_65through128
+         .          .     41:	CMPQ	BX, $256
+         .          .     42:	JBE	_129through256
+         .          .     43:	CMPB	internal∕cpu·X86+const_offsetX86HasAVX2(SB), $1
+         .          .     44:	JE loop_preheader_avx2
+         .          .     45:	// TODO: for really big clears, use MOVNTDQ, even without AVX2.
+         .          .     46:
+         .          .     47:loop:
+         .          .     48:	MOVOU	X0, 0(DI)
+         .          .     49:	MOVOU	X0, 16(DI)
+         .          .     50:	MOVOU	X0, 32(DI)
+         .          .     51:	MOVOU	X0, 48(DI)
+         .          .     52:	MOVOU	X0, 64(DI)
+         .          .     53:	MOVOU	X0, 80(DI)
+         .          .     54:	MOVOU	X0, 96(DI)
+         .          .     55:	MOVOU	X0, 112(DI)
+         .          .     56:	MOVOU	X0, 128(DI)
+         .          .     57:	MOVOU	X0, 144(DI)
+         .          .     58:	MOVOU	X0, 160(DI)
+         .          .     59:	MOVOU	X0, 176(DI)
+         .          .     60:	MOVOU	X0, 192(DI)
+         .          .     61:	MOVOU	X0, 208(DI)
+         .          .     62:	MOVOU	X0, 224(DI)
+         .          .     63:	MOVOU	X0, 240(DI)
+         .          .     64:	SUBQ	$256, BX
+         .          .     65:	ADDQ	$256, DI
+         .          .     66:	CMPQ	BX, $256
+         .          .     67:	JAE	loop
+         .          .     68:	JMP	tail
+         .          .     69:
+         .          .     70:loop_preheader_avx2:
+         .          .     71:	VPXOR Y0, Y0, Y0
+         .          .     72:	// For smaller sizes MOVNTDQ may be faster or slower depending on hardware.
+         .          .     73:	// For larger sizes it is always faster, even on dual Xeons with 30M cache.
+         .          .     74:	// TODO take into account actual LLC size. E. g. glibc uses LLC size/2.
+         .          .     75:	CMPQ    BX, $0x2000000
+         .          .     76:	JAE     loop_preheader_avx2_huge
+         .          .     77:loop_avx2:
+      10ms       10ms     78:	VMOVDQU	Y0, 0(DI)
+      20ms       20ms     79:	VMOVDQU	Y0, 32(DI)
+         .          .     80:	VMOVDQU	Y0, 64(DI)
+      10ms       10ms     81:	VMOVDQU	Y0, 96(DI)
+         .          .     82:	SUBQ	$128, BX
+         .          .     83:	ADDQ	$128, DI
+         .          .     84:	CMPQ	BX, $128
+         .          .     85:	JAE	loop_avx2
+         .          .     86:	VMOVDQU  Y0, -32(DI)(BX*1)
+ROUTINE ======================== runtime.memequal in /usr/local/go/src/internal/bytealg/equal_amd64.s
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .      5:#include "go_asm.h"
+         .          .      6:#include "textflag.h"
+         .          .      7:
+         .          .      8:// memequal(a, b unsafe.Pointer, size uintptr) bool
+         .          .      9:TEXT runtime·memequal(SB),NOSPLIT,$0-25
+      10ms       10ms     10:	MOVQ	a+0(FP), SI
+         .          .     11:	MOVQ	b+8(FP), DI
+         .          .     12:	CMPQ	SI, DI
+         .          .     13:	JEQ	eq
+         .          .     14:	MOVQ	size+16(FP), BX
+         .          .     15:	LEAQ	ret+24(FP), AX
+ROUTINE ======================== runtime.memmove in /usr/local/go/src/runtime/memmove_amd64.s
+      40ms       40ms (flat, cum)  1.93% of Total
+         .          .     50:	// BSR+branch table make almost all memmove/memclr benchmarks worse. Not worth doing.
+         .          .     51:	TESTQ	BX, BX
+         .          .     52:	JEQ	move_0
+         .          .     53:	CMPQ	BX, $2
+         .          .     54:	JBE	move_1or2
+      10ms       10ms     55:	CMPQ	BX, $4
+         .          .     56:	JB	move_3
+         .          .     57:	JBE	move_4
+         .          .     58:	CMPQ	BX, $8
+         .          .     59:	JB	move_5through7
+         .          .     60:	JE	move_8
+         .          .     61:	CMPQ	BX, $16
+         .          .     62:	JBE	move_9through16
+         .          .     63:	CMPQ	BX, $32
+         .          .     64:	JBE	move_17through32
+         .          .     65:	CMPQ	BX, $64
+         .          .     66:	JBE	move_33through64
+         .          .     67:	CMPQ	BX, $128
+         .          .     68:	JBE	move_65through128
+         .          .     69:	CMPQ	BX, $256
+         .          .     70:	JBE	move_129through256
+         .          .     71:
+         .          .     72:	TESTB	$1, runtime·useAVXmemmove(SB)
+         .          .     73:	JNZ	avxUnaligned
+         .          .     74:
+         .          .     75:/*
+         .          .     76: * check and set for backwards
+         .          .     77: */
+         .          .     78:	CMPQ	SI, DI
+         .          .     79:	JLS	back
+         .          .     80:
+         .          .     81:/*
+         .          .     82: * forward copy loop
+         .          .     83: */
+         .          .     84:forward:
+         .          .     85:	CMPQ	BX, $2048
+         .          .     86:	JLS	move_256through2048
+         .          .     87:
+         .          .     88:	// If REP MOVSB isn't fast, don't use it
+         .          .     89:	CMPB	internal∕cpu·X86+const_offsetX86HasERMS(SB), $1 // enhanced REP MOVSB/STOSB
+         .          .     90:	JNE	fwdBy8
+         .          .     91:
+         .          .     92:	// Check alignment
+         .          .     93:	MOVL	SI, AX
+         .          .     94:	ORL	DI, AX
+         .          .     95:	TESTL	$7, AX
+         .          .     96:	JEQ	fwdBy8
+         .          .     97:
+         .          .     98:	// Do 1 byte at a time
+         .          .     99:	MOVQ	BX, CX
+         .          .    100:	REP;	MOVSB
+         .          .    101:	RET
+         .          .    102:
+         .          .    103:fwdBy8:
+         .          .    104:	// Do 8 bytes at a time
+         .          .    105:	MOVQ	BX, CX
+         .          .    106:	SHRQ	$3, CX
+         .          .    107:	ANDQ	$7, BX
+         .          .    108:	REP;	MOVSQ
+         .          .    109:	JMP	tail
+         .          .    110:
+         .          .    111:back:
+         .          .    112:/*
+         .          .    113: * check overlap
+         .          .    114: */
+         .          .    115:	MOVQ	SI, CX
+         .          .    116:	ADDQ	BX, CX
+         .          .    117:	CMPQ	CX, DI
+         .          .    118:	JLS	forward
+         .          .    119:/*
+         .          .    120: * whole thing backwards has
+         .          .    121: * adjusted addresses
+         .          .    122: */
+         .          .    123:	ADDQ	BX, DI
+         .          .    124:	ADDQ	BX, SI
+         .          .    125:	STD
+         .          .    126:
+         .          .    127:/*
+         .          .    128: * copy
+         .          .    129: */
+         .          .    130:	MOVQ	BX, CX
+         .          .    131:	SHRQ	$3, CX
+         .          .    132:	ANDQ	$7, BX
+         .          .    133:
+         .          .    134:	SUBQ	$8, DI
+         .          .    135:	SUBQ	$8, SI
+         .          .    136:	REP;	MOVSQ
+         .          .    137:
+         .          .    138:	CLD
+         .          .    139:	ADDQ	$8, DI
+         .          .    140:	ADDQ	$8, SI
+         .          .    141:	SUBQ	BX, DI
+         .          .    142:	SUBQ	BX, SI
+         .          .    143:	JMP	tail
+         .          .    144:
+         .          .    145:move_1or2:
+         .          .    146:	MOVB	(SI), AX
+         .          .    147:	MOVB	-1(SI)(BX*1), CX
+      10ms       10ms    148:	MOVB	AX, (DI)
+         .          .    149:	MOVB	CX, -1(DI)(BX*1)
+         .          .    150:	RET
+         .          .    151:move_0:
+         .          .    152:	RET
+         .          .    153:move_4:
+         .          .    154:	MOVL	(SI), AX
+         .          .    155:	MOVL	AX, (DI)
+         .          .    156:	RET
+         .          .    157:move_3:
+         .          .    158:	MOVW	(SI), AX
+         .          .    159:	MOVB	2(SI), CX
+         .          .    160:	MOVW	AX, (DI)
+         .          .    161:	MOVB	CX, 2(DI)
+         .          .    162:	RET
+         .          .    163:move_5through7:
+         .          .    164:	MOVL	(SI), AX
+         .          .    165:	MOVL	-4(SI)(BX*1), CX
+         .          .    166:	MOVL	AX, (DI)
+         .          .    167:	MOVL	CX, -4(DI)(BX*1)
+         .          .    168:	RET
+         .          .    169:move_8:
+         .          .    170:	// We need a separate case for 8 to make sure we write pointers atomically.
+         .          .    171:	MOVQ	(SI), AX
+         .          .    172:	MOVQ	AX, (DI)
+         .          .    173:	RET
+         .          .    174:move_9through16:
+         .          .    175:	MOVQ	(SI), AX
+         .          .    176:	MOVQ	-8(SI)(BX*1), CX
+         .          .    177:	MOVQ	AX, (DI)
+         .          .    178:	MOVQ	CX, -8(DI)(BX*1)
+         .          .    179:	RET
+         .          .    180:move_17through32:
+         .          .    181:	MOVOU	(SI), X0
+         .          .    182:	MOVOU	-16(SI)(BX*1), X1
+         .          .    183:	MOVOU	X0, (DI)
+         .          .    184:	MOVOU	X1, -16(DI)(BX*1)
+         .          .    185:	RET
+         .          .    186:move_33through64:
+         .          .    187:	MOVOU	(SI), X0
+         .          .    188:	MOVOU	16(SI), X1
+         .          .    189:	MOVOU	-32(SI)(BX*1), X2
+      10ms       10ms    190:	MOVOU	-16(SI)(BX*1), X3
+         .          .    191:	MOVOU	X0, (DI)
+         .          .    192:	MOVOU	X1, 16(DI)
+         .          .    193:	MOVOU	X2, -32(DI)(BX*1)
+         .          .    194:	MOVOU	X3, -16(DI)(BX*1)
+         .          .    195:	RET
+         .          .    196:move_65through128:
+         .          .    197:	MOVOU	(SI), X0
+         .          .    198:	MOVOU	16(SI), X1
+         .          .    199:	MOVOU	32(SI), X2
+         .          .    200:	MOVOU	48(SI), X3
+         .          .    201:	MOVOU	-64(SI)(BX*1), X4
+         .          .    202:	MOVOU	-48(SI)(BX*1), X5
+         .          .    203:	MOVOU	-32(SI)(BX*1), X6
+         .          .    204:	MOVOU	-16(SI)(BX*1), X7
+         .          .    205:	MOVOU	X0, (DI)
+         .          .    206:	MOVOU	X1, 16(DI)
+         .          .    207:	MOVOU	X2, 32(DI)
+         .          .    208:	MOVOU	X3, 48(DI)
+         .          .    209:	MOVOU	X4, -64(DI)(BX*1)
+         .          .    210:	MOVOU	X5, -48(DI)(BX*1)
+         .          .    211:	MOVOU	X6, -32(DI)(BX*1)
+         .          .    212:	MOVOU	X7, -16(DI)(BX*1)
+         .          .    213:	RET
+         .          .    214:move_129through256:
+      10ms       10ms    215:	MOVOU	(SI), X0
+         .          .    216:	MOVOU	16(SI), X1
+         .          .    217:	MOVOU	32(SI), X2
+         .          .    218:	MOVOU	48(SI), X3
+         .          .    219:	MOVOU	64(SI), X4
+         .          .    220:	MOVOU	80(SI), X5
+ROUTINE ======================== runtime.mstart in /usr/local/go/src/runtime/proc.go
+         0      230ms (flat, cum) 11.11% of Total
+         .          .   1241:// May run during STW (because it doesn't have a P yet), so write
+         .          .   1242:// barriers are not allowed.
+         .          .   1243://
+         .          .   1244://go:nosplit
+         .          .   1245://go:nowritebarrierrec
+         .      230ms   1246:func mstart() {
+         .          .   1247:	_g_ := getg()
+         .          .   1248:
+         .          .   1249:	osStack := _g_.stack.lo == 0
+         .          .   1250:	if osStack {
+         .          .   1251:		// Initialize stack bounds from system stack.
+ROUTINE ======================== runtime.nanotime in /usr/local/go/src/runtime/time_nofake.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .     14:// Zero means not to use faketime.
+         .          .     15:var faketime int64
+         .          .     16:
+         .          .     17://go:nosplit
+         .          .     18:func nanotime() int64 {
+         .       10ms     19:	return nanotime1()
+         .          .     20:}
+         .          .     21:
+         .          .     22:func walltime() (sec int64, nsec int32) {
+         .          .     23:	return walltime1()
+         .          .     24:}
+ROUTINE ======================== runtime.nanotime1 in /usr/local/go/src/runtime/sys_darwin.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .    242:func open_trampoline()
+         .          .    243:
+         .          .    244://go:nosplit
+         .          .    245://go:cgo_unsafe_args
+         .          .    246:func nanotime1() int64 {
+      10ms       10ms    247:	var r struct {
+         .          .    248:		t            int64  // raw timer
+         .          .    249:		numer, denom uint32 // conversion factors. nanoseconds = t * numer / denom.
+         .          .    250:	}
+         .          .    251:	libcCall(unsafe.Pointer(funcPC(nanotime_trampoline)), unsafe.Pointer(&r))
+         .          .    252:	// Note: Apple seems unconcerned about overflow here. See
+ROUTINE ======================== runtime.netpoll in /usr/local/go/src/runtime/netpoll_kqueue.go
+         0       90ms (flat, cum)  4.35% of Total
+         .          .    122:		}
+         .          .    123:		tp = &ts
+         .          .    124:	}
+         .          .    125:	var events [64]keventt
+         .          .    126:retry:
+         .       90ms    127:	n := kevent(kq, nil, 0, &events[0], int32(len(events)), tp)
+         .          .    128:	if n < 0 {
+         .          .    129:		if n != -_EINTR {
+         .          .    130:			println("runtime: kevent on fd", kq, "failed with", -n)
+         .          .    131:			throw("runtime: netpoll failed")
+         .          .    132:		}
+ROUTINE ======================== runtime.newobject in /usr/local/go/src/runtime/malloc.go
+      10ms      290ms (flat, cum) 14.01% of Total
+         .          .   1172:
+         .          .   1173:// implementation of new builtin
+         .          .   1174:// compiler (both frontend and SSA backend) knows the signature
+         .          .   1175:// of this function
+         .          .   1176:func newobject(typ *_type) unsafe.Pointer {
+      10ms      290ms   1177:	return mallocgc(typ.size, typ, true)
+         .          .   1178:}
+         .          .   1179:
+         .          .   1180://go:linkname reflect_unsafe_New reflect.unsafe_New
+         .          .   1181:func reflect_unsafe_New(typ *_type) unsafe.Pointer {
+         .          .   1182:	return mallocgc(typ.size, typ, true)
+ROUTINE ======================== runtime.nextFreeFast in /usr/local/go/src/runtime/malloc.go
+      30ms       30ms (flat, cum)  1.45% of Total
+         .          .    841:var zerobase uintptr
+         .          .    842:
+         .          .    843:// nextFreeFast returns the next free object if one is quickly available.
+         .          .    844:// Otherwise it returns 0.
+         .          .    845:func nextFreeFast(s *mspan) gclinkptr {
+      30ms       30ms    846:	theBit := sys.Ctz64(s.allocCache) // Is there a free object in the allocCache?
+         .          .    847:	if theBit < 64 {
+         .          .    848:		result := s.freeindex + uintptr(theBit)
+         .          .    849:		if result < s.nelems {
+         .          .    850:			freeidx := result + 1
+         .          .    851:			if freeidx%64 == 0 && freeidx != s.nelems {
+ROUTINE ======================== runtime.notesleep in /usr/local/go/src/runtime/lock_sema.go
+         0       40ms (flat, cum)  1.93% of Total
+         .          .    176:		return
+         .          .    177:	}
+         .          .    178:	// Queued. Sleep.
+         .          .    179:	gp.m.blocked = true
+         .          .    180:	if *cgo_yield == nil {
+         .       40ms    181:		semasleep(-1)
+         .          .    182:	} else {
+         .          .    183:		// Sleep for an arbitrary-but-moderate interval to poll libc interceptors.
+         .          .    184:		const ns = 10e6
+         .          .    185:		for atomic.Loaduintptr(&n.key) == 0 {
+         .          .    186:			semasleep(ns)
+ROUTINE ======================== runtime.park_m in /usr/local/go/src/runtime/proc.go
+         0       70ms (flat, cum)  3.38% of Total
+         .          .   3302:
+         .          .   3303:	casgstatus(gp, _Grunning, _Gwaiting)
+         .          .   3304:	dropg()
+         .          .   3305:
+         .          .   3306:	if fn := _g_.m.waitunlockf; fn != nil {
+         .       10ms   3307:		ok := fn(gp, _g_.m.waitlock)
+         .          .   3308:		_g_.m.waitunlockf = nil
+         .          .   3309:		_g_.m.waitlock = nil
+         .          .   3310:		if !ok {
+         .          .   3311:			if trace.enabled {
+         .          .   3312:				traceGoUnpark(gp, 2)
+         .          .   3313:			}
+         .          .   3314:			casgstatus(gp, _Gwaiting, _Grunnable)
+         .          .   3315:			execute(gp, true) // Schedule it back, never returns.
+         .          .   3316:		}
+         .          .   3317:	}
+         .       60ms   3318:	schedule()
+         .          .   3319:}
+         .          .   3320:
+         .          .   3321:func goschedImpl(gp *g) {
+         .          .   3322:	status := readgstatus(gp)
+         .          .   3323:	if status&^_Gscan != _Grunning {
+ROUTINE ======================== runtime.preemptM in /usr/local/go/src/runtime/signal_unix.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .    364:		// If multiple threads are preempting the same M, it may send many
+         .          .    365:		// signals to the same M such that it hardly make progress, causing
+         .          .    366:		// live-lock problem. Apparently this could happen on darwin. See
+         .          .    367:		// issue #37741.
+         .          .    368:		// Only send a signal if there isn't already one pending.
+         .       30ms    369:		signalM(mp, sigPreempt)
+         .          .    370:	}
+         .          .    371:
+         .          .    372:	if GOOS == "darwin" || GOOS == "ios" {
+         .          .    373:		execLock.runlock()
+         .          .    374:	}
+ROUTINE ======================== runtime.preemptone in /usr/local/go/src/runtime/proc.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .   5420:	gp.stackguard0 = stackPreempt
+         .          .   5421:
+         .          .   5422:	// Request an async preemption of this P.
+         .          .   5423:	if preemptMSupported && debug.asyncpreemptoff == 0 {
+         .          .   5424:		_p_.preempt = true
+         .       30ms   5425:		preemptM(mp)
+         .          .   5426:	}
+         .          .   5427:
+         .          .   5428:	return true
+         .          .   5429:}
+         .          .   5430:
+ROUTINE ======================== runtime.pthread_cond_wait in /usr/local/go/src/runtime/sys_darwin.go
+      40ms       40ms (flat, cum)  1.93% of Total
+         .          .    379:func pthread_cond_init_trampoline()
+         .          .    380:
+         .          .    381://go:nosplit
+         .          .    382://go:cgo_unsafe_args
+         .          .    383:func pthread_cond_wait(c *pthreadcond, m *pthreadmutex) int32 {
+      40ms       40ms    384:	return libcCall(unsafe.Pointer(funcPC(pthread_cond_wait_trampoline)), unsafe.Pointer(&c))
+         .          .    385:}
+         .          .    386:func pthread_cond_wait_trampoline()
+         .          .    387:
+         .          .    388://go:nosplit
+         .          .    389://go:cgo_unsafe_args
+ROUTINE ======================== runtime.pthread_kill in /usr/local/go/src/runtime/sys_darwin.go
+      30ms       30ms (flat, cum)  1.45% of Total
+         .          .    143:func pthread_self_trampoline()
+         .          .    144:
+         .          .    145://go:nosplit
+         .          .    146://go:cgo_unsafe_args
+         .          .    147:func pthread_kill(t pthread, sig uint32) {
+      30ms       30ms    148:	libcCall(unsafe.Pointer(funcPC(pthread_kill_trampoline)), unsafe.Pointer(&t))
+         .          .    149:	return
+         .          .    150:}
+         .          .    151:func pthread_kill_trampoline()
+         .          .    152:
+         .          .    153:// mmap is used to do low-level memory allocation via mmap. Don't allow stack
+ROUTINE ======================== runtime.rawstring in /usr/local/go/src/runtime/string.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .    258:// rawstring allocates storage for a new string. The returned
+         .          .    259:// string and byte slice both refer to the same storage.
+         .          .    260:// The storage is not zeroed. Callers should use
+         .          .    261:// b to set the string contents and then drop b.
+         .          .    262:func rawstring(size int) (s string, b []byte) {
+         .       30ms    263:	p := mallocgc(uintptr(size), nil, false)
+         .          .    264:
+         .          .    265:	stringStructOf(&s).str = p
+         .          .    266:	stringStructOf(&s).len = size
+         .          .    267:
+         .          .    268:	*(*slice)(unsafe.Pointer(&b)) = slice{p, size, size}
+ROUTINE ======================== runtime.rawstringtmp in /usr/local/go/src/runtime/string.go
+      10ms       40ms (flat, cum)  1.93% of Total
+         .          .    122:	stk := getg().stack
+         .          .    123:	return stk.lo <= ptr && ptr < stk.hi
+         .          .    124:}
+         .          .    125:
+         .          .    126:func rawstringtmp(buf *tmpBuf, l int) (s string, b []byte) {
+      10ms       10ms    127:	if buf != nil && l <= len(buf) {
+         .          .    128:		b = buf[:l]
+         .          .    129:		s = slicebytetostringtmp(&b[0], len(b))
+         .          .    130:	} else {
+         .       30ms    131:		s, b = rawstring(l)
+         .          .    132:	}
+         .          .    133:	return
+         .          .    134:}
+         .          .    135:
+         .          .    136:// slicebytetostringtmp returns a "string" referring to the actual []byte bytes.
+ROUTINE ======================== runtime.releasem in /usr/local/go/src/runtime/runtime1.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .    471:}
+         .          .    472:
+         .          .    473://go:nosplit
+         .          .    474:func releasem(mp *m) {
+         .          .    475:	_g_ := getg()
+      10ms       10ms    476:	mp.locks--
+      10ms       10ms    477:	if mp.locks == 0 && _g_.preempt {
+         .          .    478:		// restore the preemption request in case we've cleared it in newstack
+         .          .    479:		_g_.stackguard0 = stackPreempt
+         .          .    480:	}
+         .          .    481:}
+         .          .    482:
+ROUTINE ======================== runtime.scanblock in /usr/local/go/src/runtime/mgcmark.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .   1176:		bits := uint32(*addb(ptrmask, i/(sys.PtrSize*8)))
+         .          .   1177:		if bits == 0 {
+         .          .   1178:			i += sys.PtrSize * 8
+         .          .   1179:			continue
+         .          .   1180:		}
+      10ms       10ms   1181:		for j := 0; j < 8 && i < n; j++ {
+         .          .   1182:			if bits&1 != 0 {
+         .          .   1183:				// Same work as in scanobject; see comments there.
+         .          .   1184:				p := *(*uintptr)(unsafe.Pointer(b + i))
+         .          .   1185:				if p != 0 {
+         .          .   1186:					if obj, span, objIndex := findObject(p, b, i); obj != 0 {
+ROUTINE ======================== runtime.scanframeworker in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    913:	locals, args, objs := getStackMap(frame, &state.cache, false)
+         .          .    914:
+         .          .    915:	// Scan local variables if stack frame has been allocated.
+         .          .    916:	if locals.n > 0 {
+         .          .    917:		size := uintptr(locals.n) * sys.PtrSize
+         .       10ms    918:		scanblock(frame.varp-size, size, locals.bytedata, gcw, state)
+         .          .    919:	}
+         .          .    920:
+         .          .    921:	// Scan arguments.
+         .          .    922:	if args.n > 0 {
+         .          .    923:		scanblock(frame.argp, uintptr(args.n)*sys.PtrSize, args.bytedata, gcw, state)
+ROUTINE ======================== runtime.scanobject in /usr/local/go/src/runtime/mgcmark.go
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .   1258:			// Avoid needless hbits.next() on last iteration.
+         .          .   1259:			hbits = hbits.next()
+         .          .   1260:		}
+         .          .   1261:		// Load bits once. See CL 22712 and issue 16973 for discussion.
+         .          .   1262:		bits := hbits.bits()
+      10ms       10ms   1263:		if bits&bitScan == 0 {
+         .          .   1264:			break // no more pointers in this object
+         .          .   1265:		}
+         .          .   1266:		if bits&bitPointer == 0 {
+         .          .   1267:			continue // not a pointer
+         .          .   1268:		}
+ROUTINE ======================== runtime.scanstack in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    744:	// Scan the stack. Accumulate a list of stack objects.
+         .          .    745:	scanframe := func(frame *stkframe, unused unsafe.Pointer) bool {
+         .          .    746:		scanframeworker(frame, &state, gcw)
+         .          .    747:		return true
+         .          .    748:	}
+         .       10ms    749:	gentraceback(^uintptr(0), ^uintptr(0), 0, gp, 0, nil, 0x7fffffff, scanframe, nil, 0)
+         .          .    750:
+         .          .    751:	// Find additional pointers that point into the stack from the heap.
+         .          .    752:	// Currently this includes defers and panics. See also function copystack.
+         .          .    753:
+         .          .    754:	// Find and trace all defer arguments.
+ROUTINE ======================== runtime.scanstack.func1 in /usr/local/go/src/runtime/mgcmark.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    741:		scanblock(uintptr(unsafe.Pointer(&gp.sched.ctxt)), sys.PtrSize, &oneptrmask[0], gcw, &state)
+         .          .    742:	}
+         .          .    743:
+         .          .    744:	// Scan the stack. Accumulate a list of stack objects.
+         .          .    745:	scanframe := func(frame *stkframe, unused unsafe.Pointer) bool {
+         .       10ms    746:		scanframeworker(frame, &state, gcw)
+         .          .    747:		return true
+         .          .    748:	}
+         .          .    749:	gentraceback(^uintptr(0), ^uintptr(0), 0, gp, 0, nil, 0x7fffffff, scanframe, nil, 0)
+         .          .    750:
+         .          .    751:	// Find additional pointers that point into the stack from the heap.
+ROUTINE ======================== runtime.schedule in /usr/local/go/src/runtime/proc.go
+         0       60ms (flat, cum)  2.90% of Total
+         .          .   3164:		gp, inheritTime = runqget(_g_.m.p.ptr())
+         .          .   3165:		// We can see gp != nil here even if the M is spinning,
+         .          .   3166:		// if checkTimers added a local goroutine via goready.
+         .          .   3167:	}
+         .          .   3168:	if gp == nil {
+         .       60ms   3169:		gp, inheritTime = findrunnable() // blocks until work is available
+         .          .   3170:	}
+         .          .   3171:
+         .          .   3172:	// This thread is going to run a goroutine and is not spinning anymore,
+         .          .   3173:	// so if it was marked as spinning we need to reset it now and potentially
+         .          .   3174:	// start a new spinning M.
+ROUTINE ======================== runtime.semasleep in /usr/local/go/src/runtime/os_darwin.go
+         0       40ms (flat, cum)  1.93% of Total
+         .          .     58:			if err == _ETIMEDOUT {
+         .          .     59:				pthread_mutex_unlock(&mp.mutex)
+         .          .     60:				return -1
+         .          .     61:			}
+         .          .     62:		} else {
+         .       40ms     63:			pthread_cond_wait(&mp.cond, &mp.mutex)
+         .          .     64:		}
+         .          .     65:	}
+         .          .     66:}
+         .          .     67:
+         .          .     68://go:nosplit
+ROUTINE ======================== runtime.signalM in /usr/local/go/src/runtime/os_darwin.go
+         0       30ms (flat, cum)  1.45% of Total
+         .          .    429:		executablePath = executablePath[len(prefix):]
+         .          .    430:	}
+         .          .    431:}
+         .          .    432:
+         .          .    433:func signalM(mp *m, sig int) {
+         .       30ms    434:	pthread_kill(pthread(mp.procid), uint32(sig))
+         .          .    435:}
+ROUTINE ======================== runtime.startTheWorld.func1 in /usr/local/go/src/runtime/proc.go
+         0       10ms (flat, cum)  0.48% of Total
+         .          .    998:	})
+         .          .    999:}
+         .          .   1000:
+         .          .   1001:// startTheWorld undoes the effects of stopTheWorld.
+         .          .   1002:func startTheWorld() {
+         .       10ms   1003:	systemstack(func() { startTheWorldWithSema(false) })
+         .          .   1004:
+         .          .   1005:	// worldsema must be held over startTheWorldWithSema to ensure
+         .          .   1006:	// gomaxprocs cannot change while worldsema is held.
+         .          .   1007:	//
+         .          .   1008:	// Release worldsema with direct handoff to the next waiter, but
+ROUTINE ======================== runtime.startTheWorldWithSema in /usr/local/go/src/runtime/proc.go
+         0       80ms (flat, cum)  3.86% of Total
+         .          .   1151:func startTheWorldWithSema(emitTraceEvent bool) int64 {
+         .          .   1152:	assertWorldStopped()
+         .          .   1153:
+         .          .   1154:	mp := acquirem() // disable preemption because it can be holding p in a local var
+         .          .   1155:	if netpollinited() {
+         .       80ms   1156:		list := netpoll(0) // non-blocking
+         .          .   1157:		injectglist(&list)
+         .          .   1158:	}
+         .          .   1159:	lock(&sched.lock)
+         .          .   1160:
+         .          .   1161:	procs := gomaxprocs
+ROUTINE ======================== runtime.stopm in /usr/local/go/src/runtime/proc.go
+         0       40ms (flat, cum)  1.93% of Total
+         .          .   2296:	}
+         .          .   2297:
+         .          .   2298:	lock(&sched.lock)
+         .          .   2299:	mput(_g_.m)
+         .          .   2300:	unlock(&sched.lock)
+         .       40ms   2301:	mPark()
+         .          .   2302:	acquirep(_g_.m.nextp.ptr())
+         .          .   2303:	_g_.m.nextp = 0
+         .          .   2304:}
+         .          .   2305:
+         .          .   2306:func mspinning() {
+ROUTINE ======================== runtime.strhash in /usr/local/go/src/runtime/asm_amd64.s
+      10ms       10ms (flat, cum)  0.48% of Total
+         .          .    895:// func strhash(p unsafe.Pointer, h uintptr) uintptr
+         .          .    896:TEXT runtime·strhash(SB),NOSPLIT,$0-24
+         .          .    897:	CMPB	runtime·useAeshash(SB), $0
+         .          .    898:	JEQ	noaes
+         .          .    899:	MOVQ	p+0(FP), AX	// ptr to string struct
+      10ms       10ms    900:	MOVQ	8(AX), CX	// length of string
+         .          .    901:	MOVQ	(AX), AX	// string data
+         .          .    902:	LEAQ	ret+16(FP), DX
+         .          .    903:	JMP	aeshashbody<>(SB)
+         .          .    904:noaes:
+         .          .    905:	JMP	runtime·strhashFallback(SB)
+ROUTINE ======================== runtime.sysUsed in /usr/local/go/src/runtime/mem_darwin.go
+         0      120ms (flat, cum)  5.80% of Total
+         .          .     28:
+         .          .     29:func sysUsed(v unsafe.Pointer, n uintptr) {
+         .          .     30:	// MADV_FREE_REUSE is necessary to keep the kernel's accounting
+         .          .     31:	// accurate. If called on any memory region that hasn't been
+         .          .     32:	// MADV_FREE_REUSABLE'd, it's a no-op.
+         .      120ms     33:	madvise(v, n, _MADV_FREE_REUSE)
+         .          .     34:}
+         .          .     35:
+         .          .     36:func sysHugePage(v unsafe.Pointer, n uintptr) {
+         .          .     37:}
+         .          .     38:
+ROUTINE ======================== runtime.systemstack in /usr/local/go/src/runtime/asm_amd64.s
+         0      300ms (flat, cum) 14.49% of Total
+         .          .    374:	MOVQ	BX, SP
+         .          .    375:
+         .          .    376:	// call target function
+         .          .    377:	MOVQ	DI, DX
+         .          .    378:	MOVQ	0(DI), DI
+         .      300ms    379:	CALL	DI
+         .          .    380:
+         .          .    381:	// switch back to g
+         .          .    382:	get_tls(CX)
+         .          .    383:	MOVQ	g(CX), AX
+         .          .    384:	MOVQ	g_m(AX), BX
+ROUTINE ======================== strconv.ParseFloat in /usr/local/go/src/strconv/atof.go
+         0       90ms (flat, cum)  4.35% of Total
+         .          .    686:// ParseFloat returns f = ±Inf, err.Err = ErrRange.
+         .          .    687://
+         .          .    688:// ParseFloat recognizes the strings "NaN", and the (possibly signed) strings "Inf" and "Infinity"
+         .          .    689:// as their respective special floating point values. It ignores case when matching.
+         .          .    690:func ParseFloat(s string, bitSize int) (float64, error) {
+         .       90ms    691:	f, n, err := parseFloatPrefix(s, bitSize)
+         .          .    692:	if err == nil && n != len(s) {
+         .          .    693:		return 0, syntaxError(fnParseFloat, s)
+         .          .    694:	}
+         .          .    695:	return f, err
+         .          .    696:}
+ROUTINE ======================== strconv.atof64 in /usr/local/go/src/strconv/atof.go
+      10ms       80ms (flat, cum)  3.86% of Total
+         .          .    615:func atof64(s string) (f float64, n int, err error) {
+         .          .    616:	if val, n, ok := special(s); ok {
+         .          .    617:		return val, n, nil
+         .          .    618:	}
+         .          .    619:
+      10ms       60ms    620:	mantissa, exp, neg, trunc, hex, n, ok := readFloat(s)
+         .          .    621:	if !ok {
+         .          .    622:		return 0, n, syntaxError(fnParseFloat, s)
+         .          .    623:	}
+         .          .    624:
+         .          .    625:	if hex {
+         .          .    626:		f, err := atofHex(s[:n], &float64info, mantissa, exp, neg, trunc)
+         .          .    627:		return f, n, err
+         .          .    628:	}
+         .          .    629:
+         .          .    630:	if optimize {
+         .          .    631:		// Try pure floating-point arithmetic conversion, and if that fails,
+         .          .    632:		// the Eisel-Lemire algorithm.
+         .          .    633:		if !trunc {
+         .       20ms    634:			if f, ok := atof64exact(mantissa, exp, neg); ok {
+         .          .    635:				return f, n, nil
+         .          .    636:			}
+         .          .    637:		}
+         .          .    638:		f, ok := eiselLemire64(mantissa, exp, neg)
+         .          .    639:		if ok {
+ROUTINE ======================== strconv.atof64exact in /usr/local/go/src/strconv/atof.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .    422:// Three common cases:
+         .          .    423://	value is exact integer
+         .          .    424://	value is exact integer * exact power of ten
+         .          .    425://	value is exact integer / exact power of ten
+         .          .    426:// These all produce potentially inexact but correctly rounded answers.
+      10ms       10ms    427:func atof64exact(mantissa uint64, exp int, neg bool) (f float64, ok bool) {
+         .          .    428:	if mantissa>>float64info.mantbits != 0 {
+         .          .    429:		return
+         .          .    430:	}
+         .          .    431:	f = float64(mantissa)
+         .          .    432:	if neg {
+         .          .    433:		f = -f
+         .          .    434:	}
+         .          .    435:	switch {
+      10ms       10ms    436:	case exp == 0:
+         .          .    437:		// an integer.
+         .          .    438:		return f, true
+         .          .    439:	// Exact integers are <= 10^15.
+         .          .    440:	// Exact powers of ten are <= 10^22.
+         .          .    441:	case exp > 0 && exp <= 15+22: // int * 10^k
+ROUTINE ======================== strconv.parseFloatPrefix in /usr/local/go/src/strconv/atof.go
+      10ms       90ms (flat, cum)  4.35% of Total
+         .          .    693:		return 0, syntaxError(fnParseFloat, s)
+         .          .    694:	}
+         .          .    695:	return f, err
+         .          .    696:}
+         .          .    697:
+      10ms       10ms    698:func parseFloatPrefix(s string, bitSize int) (float64, int, error) {
+         .          .    699:	if bitSize == 32 {
+         .          .    700:		f, n, err := atof32(s)
+         .          .    701:		return float64(f), n, err
+         .          .    702:	}
+         .       80ms    703:	return atof64(s)
+         .          .    704:}
+ROUTINE ======================== strconv.readFloat in /usr/local/go/src/strconv/atof.go
+      50ms       50ms (flat, cum)  2.42% of Total
+         .          .    202:	sawdigits := false
+         .          .    203:	nd := 0
+         .          .    204:	ndMant := 0
+         .          .    205:	dp := 0
+         .          .    206:loop:
+      10ms       10ms    207:	for ; i < len(s); i++ {
+         .          .    208:		switch c := s[i]; true {
+         .          .    209:		case c == '_':
+         .          .    210:			underscores = true
+         .          .    211:			continue
+         .          .    212:
+      10ms       10ms    213:		case c == '.':
+         .          .    214:			if sawdot {
+         .          .    215:				break loop
+         .          .    216:			}
+         .          .    217:			sawdot = true
+         .          .    218:			dp = nd
+         .          .    219:			continue
+         .          .    220:
+         .          .    221:		case '0' <= c && c <= '9':
+         .          .    222:			sawdigits = true
+         .          .    223:			if c == '0' && nd == 0 { // ignore leading zeros
+         .          .    224:				dp--
+         .          .    225:				continue
+         .          .    226:			}
+         .          .    227:			nd++
+         .          .    228:			if ndMant < maxMantDigits {
+         .          .    229:				mantissa *= base
+         .          .    230:				mantissa += uint64(c - '0')
+         .          .    231:				ndMant++
+         .          .    232:			} else if c != '0' {
+         .          .    233:				trunc = true
+         .          .    234:			}
+         .          .    235:			continue
+         .          .    236:
+         .          .    237:		case base == 16 && 'a' <= lower(c) && lower(c) <= 'f':
+         .          .    238:			sawdigits = true
+         .          .    239:			nd++
+         .          .    240:			if ndMant < maxMantDigits {
+         .          .    241:				mantissa *= 16
+         .          .    242:				mantissa += uint64(lower(c) - 'a' + 10)
+         .          .    243:				ndMant++
+         .          .    244:			} else {
+         .          .    245:				trunc = true
+         .          .    246:			}
+         .          .    247:			continue
+         .          .    248:		}
+         .          .    249:		break
+         .          .    250:	}
+         .          .    251:	if !sawdigits {
+         .          .    252:		return
+         .          .    253:	}
+         .          .    254:	if !sawdot {
+         .          .    255:		dp = nd
+         .          .    256:	}
+         .          .    257:
+         .          .    258:	if base == 16 {
+         .          .    259:		dp *= 4
+         .          .    260:		ndMant *= 4
+         .          .    261:	}
+         .          .    262:
+         .          .    263:	// optional exponent moves decimal point.
+         .          .    264:	// if we read a very large, very long number,
+         .          .    265:	// just be sure to move the decimal point by
+         .          .    266:	// a lot (say, 100000).  it doesn't matter if it's
+         .          .    267:	// not the exact number.
+      10ms       10ms    268:	if i < len(s) && lower(s[i]) == expChar {
+         .          .    269:		i++
+         .          .    270:		if i >= len(s) {
+         .          .    271:			return
+         .          .    272:		}
+         .          .    273:		esign := 1
+         .          .    274:		if s[i] == '+' {
+         .          .    275:			i++
+         .          .    276:		} else if s[i] == '-' {
+         .          .    277:			i++
+         .          .    278:			esign = -1
+         .          .    279:		}
+         .          .    280:		if i >= len(s) || s[i] < '0' || s[i] > '9' {
+         .          .    281:			return
+         .          .    282:		}
+         .          .    283:		e := 0
+         .          .    284:		for ; i < len(s) && ('0' <= s[i] && s[i] <= '9' || s[i] == '_'); i++ {
+         .          .    285:			if s[i] == '_' {
+         .          .    286:				underscores = true
+         .          .    287:				continue
+         .          .    288:			}
+         .          .    289:			if e < 10000 {
+         .          .    290:				e = e*10 + int(s[i]) - '0'
+         .          .    291:			}
+         .          .    292:		}
+         .          .    293:		dp += e * esign
+         .          .    294:	} else if base == 16 {
+         .          .    295:		// Must have exponent.
+      20ms       20ms    296:		return
+         .          .    297:	}
+         .          .    298:
+         .          .    299:	if mantissa != 0 {
+         .          .    300:		exp = dp - ndMant
+         .          .    301:	}
+ROUTINE ======================== sync.(*RWMutex).RLock in /usr/local/go/src/sync/rwmutex.go
+      20ms       20ms (flat, cum)  0.97% of Total
+         .          .     56:func (rw *RWMutex) RLock() {
+         .          .     57:	if race.Enabled {
+         .          .     58:		_ = rw.w.state
+         .          .     59:		race.Disable()
+         .          .     60:	}
+      20ms       20ms     61:	if atomic.AddInt32(&rw.readerCount, 1) < 0 {
+         .          .     62:		// A writer is pending, wait for it.
+         .          .     63:		runtime_SemacquireMutex(&rw.readerSem, false, 0)
+         .          .     64:	}
+         .          .     65:	if race.Enabled {
+         .          .     66:		race.Enable()
+ROUTINE ======================== testing.(*B).launch in /usr/local/go/src/testing/benchmark.go
+         0      1.73s (flat, cum) 83.57% of Total
+         .          .    320:			n = min(n, 100*last)
+         .          .    321:			// Be sure to run at least one more than last time.
+         .          .    322:			n = max(n, last+1)
+         .          .    323:			// Don't run more than 1e9 times. (This also keeps n in int range on 32 bit platforms.)
+         .          .    324:			n = min(n, 1e9)
+         .      1.73s    325:			b.runN(int(n))
+         .          .    326:		}
+         .          .    327:	}
+         .          .    328:	b.result = BenchmarkResult{b.N, b.duration, b.bytes, b.netAllocs, b.netBytes, b.extra}
+         .          .    329:}
+         .          .    330:
+ROUTINE ======================== testing.(*B).runN in /usr/local/go/src/testing/benchmark.go
+         0      1.73s (flat, cum) 83.57% of Total
+         .          .    187:	b.raceErrors = -race.Errors()
+         .          .    188:	b.N = n
+         .          .    189:	b.parallelism = 1
+         .          .    190:	b.ResetTimer()
+         .          .    191:	b.StartTimer()
+         .      1.73s    192:	b.benchFunc(b)
+         .          .    193:	b.StopTimer()
+         .          .    194:	b.previousN = n
+         .          .    195:	b.previousDuration = b.duration
+         .          .    196:	b.raceErrors += race.Errors()
+         .          .    197:	if b.raceErrors > 0 {
