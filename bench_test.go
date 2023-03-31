@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -15,6 +16,43 @@ import (
 	"github.com/lxt1045/json/testdata"
 	"github.com/tidwall/gjson"
 )
+
+func BenchmarkIndexByte(b *testing.B) {
+	b.Run("IndexByte", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			str := testdata.TwitterJsonOut
+			n := 0
+			k := 0
+			for {
+				j := strings.IndexByte(str[k:], '"')
+				if j < 0 {
+					break
+				}
+				n++
+				k += j + 1
+			}
+			_ = n
+		}
+		b.SetBytes(int64(b.N))
+		b.StopTimer()
+	})
+	b.Run("for", func(b *testing.B) {
+		b.ReportAllocs()
+		str := testdata.TwitterJsonOut
+		for i := 0; i < b.N; i++ {
+			n := 0
+			for i := 0; i < len(str); i++ {
+				if str[i] == '"' {
+					n++
+				}
+			}
+			_ = n
+		}
+		b.SetBytes(int64(b.N))
+		b.StopTimer()
+	})
+}
 
 func AppendFileToContent(data []string, files ...string) []string {
 	for _, file := range files {

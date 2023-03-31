@@ -8,8 +8,7 @@ Trying to implement the fastest JSON library for golang.
 当前还有一些特性没有实现，且许多边界条件还未覆盖。
 
 # 性能表现
-总的来说，此库以纯 Go 语言实现，在性能上追平了以汇编和 SIMD 实现的 [sonic](https://github.com/bytedance/sonic)，甚至略胜一筹。
-
+以纯 Go 语言实现，在性能略胜于 SIMD 实现的 [sonic](https://github.com/bytedance/sonic)。
 ## 1. sonic 的测试用例
 ### 1.1 执行 [sonic](https://github.com/bytedance/sonic) 仓库下的 small JSON 数据，
 [单测源码在这](https://github.com/lxt1045/json/blob/main/struct_bench_test.go#L684), 结果如下：
