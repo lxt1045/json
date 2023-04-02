@@ -106,6 +106,14 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 				i += n + 2
 				key = stream[start:i]
 			}
+
+			// for ; i < len(stream); i++ {
+			// 	if stream[i] != '"' {
+			// 		continue
+			// 	}
+			// 	break
+			// }
+			// key = stream[start:i]
 		}
 		// 解析 冒号
 		n, nB = parseByte(stream[i:], ':')

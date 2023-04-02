@@ -133,11 +133,19 @@ func LoadTagNode(v reflect.Value, hash uint32) (*TagInfo, error) {
 	if ok {
 		return tag, nil
 	}
-	return LoadTagNodeSlow(v, hash)
+	return LoadTagNodeSlow(v.Type(), hash)
 }
-func LoadTagNodeSlow(v reflect.Value, hash uint32) (*TagInfo, error) {
-	typ := v.Type()
-	ti, err := NewStructTagInfo(typ, nil /* ancestors*/)
+
+func LoadTagNodeByType(typ reflect.Type, hash uint32) (*TagInfo, error) {
+	tag, ok := cacheStructTagInfo.Get(hash)
+	if ok {
+		return tag, nil
+	}
+	return LoadTagNodeSlow(typ, hash)
+}
+
+func LoadTagNodeSlow(typ reflect.Type, hash uint32) (*TagInfo, error) {
+	ti, err := NewStructTagInfo(typ)
 	if err != nil {
 		return nil, err
 	}
@@ -306,6 +314,8 @@ type sliceObj struct {
 	idx uint32 // atomic
 	end uint32 // atomic
 }
+
+//BatchObj 通过批量创建的方式减少单个创建平均延时
 type BatchObj struct {
 	pool   unsafe.Pointer // *sliceObj[T]
 	goType *GoType

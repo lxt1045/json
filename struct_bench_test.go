@@ -328,13 +328,30 @@ func BenchmarkMyUnmarshal3(b *testing.B) {
 /*
 go test -benchmem -run=^$ -bench ^BenchmarkUnMarshalStruct$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 
-go test -benchmem -run=^$ -benchtime=10000000x -bench "^BenchmarkUnMarshalStruct$"
+go test -benchmem -run=^$ -v -benchtime=10000000x -bench ^BenchmarkUnmarshalStruct$ github.com/lxt1045/json -count=1
 BenchmarkUnMarshalStruct/lxt-st-12              10000000               129.2 ns/op      77375851.24 MB/s               0 B/op          0 allocs/op
 BenchmarkUnMarshalStruct/sonic-st-12            10000000               155.8 ns/op      64166301.93 MB/s               0 B/op          0 allocs/op
 BenchmarkUnMarshalStruct/lxt-st#01-12           10000000               127.5 ns/op      78409245.03 MB/s               0 B/op          0 allocs/op
 BenchmarkUnMarshalStruct/sonic-st#01-12         10000000               148.5 ns/op      67361422.86 MB/s               0 B/op          0 allocs/op
+
+
+BenchmarkUnmarshalStruct
+BenchmarkUnmarshalStruct/lxt-st
+BenchmarkUnmarshalStruct/lxt-st-12              10000000               137.1 ns/op      72926417.64 MB/s               0 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/sonic-st
+BenchmarkUnmarshalStruct/sonic-st-12            10000000               156.1 ns/op      64064282.98 MB/s               0 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/lxt-st-string
+BenchmarkUnmarshalStruct/lxt-st-string-12       10000000               137.0 ns/op      72995122.89 MB/s               0 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/lxt-st#01
+BenchmarkUnmarshalStruct/lxt-st#01-12           10000000               137.7 ns/op      72632868.70 MB/s               0 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/sonic-st#01
+BenchmarkUnmarshalStruct/sonic-st#01-12         10000000               153.9 ns/op      64996997.62 MB/s               0 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/lxt.marshal-st
+BenchmarkUnmarshalStruct/lxt.marshal-st-12      10000000                77.56 ns/op     128934363.78 MB/s             56 B/op          0 allocs/op
+BenchmarkUnmarshalStruct/sonic.marshal-st
+BenchmarkUnmarshalStruct/sonic.marshal-st-12            10000000               193.1 ns/op      51773914.52 MB/s             133 B/op          4 allocs/op
 */
-func BenchmarkUnMarshalMarshalStruct(b *testing.B) {
+func BenchmarkUnmarshalStruct(b *testing.B) {
 	type Name struct {
 		ZHCN  string `json:"ZH_CN"`
 		ENUS  string `json:"EN_US"`
@@ -1274,16 +1291,12 @@ func Test_tagParse(t *testing.T) {
 		d := DataSt{}
 		typ := reflect.TypeOf(&d)
 		typ = typ.Elem()
-		to, err := NewStructTagInfo(typ, nil)
+		to, err := NewStructTagInfo(typ)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		bs, err := json.Marshal(to)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("to:%s", string(bs))
+		t.Logf("to:%+v", to)
+		return
 	})
 }
 

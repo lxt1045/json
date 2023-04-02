@@ -42,22 +42,16 @@ type TagInfo struct {
 	StringTag    bool         // `json:"field,string"`: 此情形下,需要把struct的int转成json的string
 	OmitemptyTag bool         //  `json:"some_field,omitempty"`
 
-	/*
-		ChildList： 遍历 map 性能较差，加个 list
-	*/
-	Children  map[string]*TagInfo
-	ChildList []*TagInfo // 遍历的顺序和速度
+	Children  map[string]*TagInfo // 支持快速获取子节点
+	ChildList []*TagInfo          // 支持遍历的顺序；加快遍历速度
 
-	cacheType  reflect.Type // pointer 的 cache
-	batchCache *BatchObj    // struct 的指针对象组成的类型 的 pool
+	ptrCacheType reflect.Type // pointer 的 cache
+	ptrCache     *BatchObj    // ptrCacheType 类型的 pool
 
-	sliceCacheType      reflect.Type // 除 cdynamicPool 以外的 slice 缓存; slice 动态增长，与 pointer 不一样
+	slicePoolType       reflect.Type // 除 cdynamicPool 以外的 slice 缓存; slice 动态增长，与 pointer 不一样
 	sliceElemGoType     *GoType
 	idxSliceObjPool     uintptr
 	idxSlicePointerPool uintptr // ptrDeep > 1 时，需要使用
-
-	fUnm unmFunc
-	fM   mFunc
 
 	SPool  sync.Pool // TODO：slice pool 和 store.pool 放在一起吧，通过 id 来获取获取 pool，并把剩余的”垃圾“放回 sync.Pool 中共下次复用
 	SPoolN int32
@@ -69,6 +63,9 @@ type TagInfo struct {
 	psPooloffset int32 // pointer slice pool  在 PoolStore的偏移量
 	bsMarshalLen int32 // 缓存上次 生成的 bs 的大小，如果 cache 小于这个值，则丢弃
 	bsHaftCount  int32 // 记录上次低于 bsMarshalLen/2 的次数
+
+	fUnm unmFunc
+	fM   mFunc
 }
 
 const SPoolN = 1024 // * 1024
@@ -77,12 +74,13 @@ func (t *TagInfo) GetChildFromMap(key string) *TagInfo {
 	return t.Children[string(key)]
 }
 
+//AddChild 添加下级子节点
 func (t *TagInfo) AddChild(c *TagInfo) (err error) {
 	if len(t.Children) == 0 {
 		t.Children = make(map[string]*TagInfo)
 	}
 	if _, ok := t.Children[c.TagName]; ok {
-		err = fmt.Errorf("error, tag[%s]类型配置出错,字段重复", c.TagName)
+		err = fmt.Errorf("error, type[%s].tag[%s]类型配置出错,字段重复", t.TagName, c.TagName)
 		return
 	}
 	t.ChildList = append(t.ChildList, c)
@@ -105,7 +103,7 @@ type ancestor struct {
 	tag  *TagInfo
 }
 
-func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type, anonymous bool, ancestors []ancestor) (son *TagInfo, err error) {
+func (ti *TagInfo) setFuncs(ptrBuilder, sliceBuilder *TypeBuilder, typ reflect.Type, anonymous bool) (son *TagInfo, err error) {
 	son = ti
 	ptrDeep, baseType := 0, typ
 	var pidx *uintptr
@@ -119,7 +117,7 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 	}
 	if ptrDeep > 0 {
 		pidx = &[]uintptr{0}[0]
-		builder.AppendTagField(baseType, pidx)
+		ptrBuilder.AppendTagField(baseType, pidx)
 	}
 
 	// 先从最后一个基础类型开始处理
@@ -185,7 +183,7 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 				TypeSize: int(sliceType.Size()),
 			}
 
-			subSon, err := son.setFuncs(builder, sliceBuilder, sliceType, false /*anonymous*/, ancestors)
+			subSon, err := son.setFuncs(ptrBuilder, sliceBuilder, sliceType, false /*anonymous*/)
 			if err != nil {
 				return nil, lxterrs.Wrap(err, "Struct")
 			}
@@ -207,13 +205,15 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 		var sonIdx uintptr = 0
 		ti.fUnm, ti.fM = structMFuncs(pidx, &sonIdx)
 
-		son, err = NewStructTagInfo(baseType, ancestors)
+		// son, err = NewStructTagInfo(baseType, ancestors)
+		goType := UnpackType(baseType)
+		son, err = LoadTagNodeByType(baseType, goType.Hash)
 		if err != nil {
 			return nil, lxterrs.Wrap(err, "Struct")
 		}
 		son.fUnm, son.fM = ti.fUnm, ti.fM
-		if son != nil && son.cacheType != nil {
-			builder.AppendTagField(son.cacheType, &sonIdx) //TODO： 如果是 slice 这里需要处理成 slice 模式
+		if son != nil && son.ptrCacheType != nil {
+			ptrBuilder.AppendTagField(son.ptrCacheType, &sonIdx) //TODO： 如果是 slice 这里需要处理成 slice 模式
 		}
 		if son == nil {
 			// TODO: fUnm中需要重建 store.pool，并从
@@ -222,12 +222,12 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 		}
 		// 匿名成员的处理; 这里只能处理费指针嵌入，指针嵌入逻辑在上一层
 		if !anonymous {
-			if son.sliceCacheType != nil {
-				sliceBuilder.AppendTagField(son.sliceCacheType, &ti.idxSliceObjPool)
+			if son.slicePoolType != nil {
+				sliceBuilder.AppendTagField(son.slicePoolType, &ti.idxSliceObjPool)
 				// ti.slicePool.New = son.slicePool.New
-				// ti.sliceCacheType = son.sliceCacheType
-				// ti.batchCache = son.batchCache
-				// ti.cacheType = son.cacheType
+				// ti.slicePoolType = son.slicePoolType
+				// ti.ptrCache = son.ptrCache
+				// ti.ptrCacheType = son.ptrCacheType
 			}
 			for _, c := range son.ChildList {
 				err = ti.AddChild(c)
@@ -280,7 +280,7 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 		if err != nil {
 			return nil, lxterrs.Wrap(err, "Struct")
 		}
-		subSon, err := son.setFuncs(builder, sliceBuilder, valueType, false /*anonymous*/, ancestors)
+		subSon, err := son.setFuncs(ptrBuilder, sliceBuilder, valueType, false /*anonymous*/)
 		if err != nil {
 			return nil, lxterrs.Wrap(err, "Struct")
 		}
@@ -292,7 +292,7 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 	// 处理一下指针
 	for i := 1; i < ptrDeep; i++ {
 		var idxP *uintptr = &[]uintptr{0}[0]
-		builder.AppendPointer(fmt.Sprintf("%s_%d", ti.TagName, i), idxP)
+		ptrBuilder.AppendPointer(fmt.Sprintf("%s_%d", ti.TagName, i), idxP)
 		fUnm, fM := ti.fUnm, ti.fM
 		ti.fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			store.obj = store.Idx(*idxP)
@@ -311,15 +311,14 @@ func (ti *TagInfo) setFuncs(builder, sliceBuilder *TypeBuilder, typ reflect.Type
 /*
    每个 struct 都搞一个 pointerCacheType，在使用的时候直接获取； 再搞一个 slicePool 在是 slice 时使用；
    二者不会同一时刻出现，是不是可以合并为同一个值？
-
 */
-func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, err error) {
+func NewStructTagInfo(typIn reflect.Type) (ti *TagInfo, err error) {
 	if typIn.Kind() != reflect.Struct {
 		err = lxterrs.New("NewStructTagInfo only accepts structs; got %v", typIn.Kind())
 		return
 	}
 
-	builder := NewTypeBuilder()
+	ptrBuilder := NewTypeBuilder()
 	sliceBuilder := NewTypeBuilder()
 	ti = &TagInfo{
 		BaseType: typIn,
@@ -328,17 +327,7 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 		TypeSize: int(typIn.Size()),
 	}
 
-	goType := UnpackType(typIn)
-
-	// 通过 ancestors 避免死循环
-	for _, a := range ancestors {
-		if a.hash == goType.Hash {
-			ti = nil // 以返回 nil 来处理后续逻辑
-			return   // 避免嵌套循环
-		}
-	}
-	ancestors = append(ancestors, ancestor{goType.Hash, ti})
-
+	// 解析 struct 成员类型
 	for i := 0; i < typIn.NumField(); i++ {
 		field := typIn.Field(i)
 		son := &TagInfo{
@@ -352,33 +341,17 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 		if !field.IsExported() {
 			continue // 非导出成员不处理
 		}
-
-		tagv := field.Tag.Get("json")  //从tag列表中取出下标为i的tag //json:"field,string"
-		tagv = strings.TrimSpace(tagv) //去除两头的空格
-		if len(tagv) > 0 && tagv == "-" {
-			continue //如果tag字段没有内容，则不处理
+		fieldTag := newtag(field.Tag.Get("json")) //从tag列表中取出下标为i的tag //json:"field,string"
+		if fieldTag.negligible() {
+			continue
 		}
-		if len(tagv) == 0 {
-			tagv = field.Name // 没有 tag 则以成员名为 tag
-		}
-
-		tvs := strings.Split(tagv, ",")
-		for i := range tvs {
-			tvs[i] = strings.TrimSpace(tvs[i])
-		}
-		son.TagName = `"` + tvs[0] + `"` // 此处加上 双引号 是为了方便使用 改进后的 hash map
-		for i := 1; i < len(tvs); i++ {
-			if strings.TrimSpace(tvs[i]) == "string" {
-				son.StringTag = true
-				continue
-			}
-			if strings.TrimSpace(tvs[i]) == "omitempty" {
-				son.OmitemptyTag = true
-				continue
-			}
+		if fieldTag.empty() {
+			son.TagName = `"` + field.Name + `"` // 没有 tag 则以成员名为 tag
+		} else {
+			son.TagName, son.StringTag, son.OmitemptyTag = fieldTag.parse()
 		}
 
-		_, err = son.setFuncs(builder, sliceBuilder, field.Type, field.Anonymous, ancestors)
+		_, err = son.setFuncs(ptrBuilder, sliceBuilder, field.Type, field.Anonymous)
 		if err != nil {
 			err = lxterrs.Wrap(err, "son.setFuncs")
 			return
@@ -400,18 +373,62 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 		}
 	}
 
-	ti.cacheType = builder.Build()
-	ti.batchCache = NewBatchObj(ti.cacheType)
+	// 缓存处理
+	ti.ptrCacheType = ptrBuilder.Build()
+	ti.ptrCache = NewBatchObj(ti.ptrCacheType)
 
-	ti.sliceCacheType = sliceBuilder.Build()
-	if ti.sliceCacheType != nil {
-		// batch := NewBatchObj(ti.sliceCacheType)
-		goType := UnpackType(ti.sliceCacheType)
+	ti.slicePoolType = sliceBuilder.Build()
+	if ti.slicePoolType != nil {
+		// batch := NewBatchObj(ti.slicePoolType)
+		goType := UnpackType(ti.slicePoolType)
+		// TODO: slicePool 忘了怎么实际的了，但是看上去没起作用，需要重新设计
+		// 实际上：如果每次分配 slice 都从共的 slice 中分配 2 倍空间，
+		// 只是空间利用率可能要点，但是最多也就低一半而已，看上去完全可以接受
 		ti.slicePool = sync.Pool{
 			New: func() any {
 				return unsafe_NewArray(goType, 1)
 				// return batch.Get()
 			},
+		}
+	}
+	return
+}
+
+type tag string
+
+func newtag(tagv string) tag {
+	tagv = strings.TrimSpace(tagv)
+	return tag(tagv)
+}
+
+// 应该忽视的
+func (t tag) negligible() bool {
+	if t == "-" {
+		return true
+	}
+	return false
+}
+
+func (t tag) empty() bool {
+	if t == "" {
+		return true
+	}
+	return false
+}
+
+func (t tag) parse() (name string, bString, bOmitempty bool) {
+	tvs := strings.Split(string(t), ",")
+	name = `"` + strings.TrimSpace(tvs[0]) + `"` // 此处加上 双引号 是为了方便使用 改进后的 hash map
+
+	for i := 1; i < len(tvs); i++ {
+		v := strings.TrimSpace(tvs[i])
+		if v == "string" {
+			bString = true
+			continue
+		}
+		if v == "omitempty" {
+			bOmitempty = true
+			continue
 		}
 	}
 	return

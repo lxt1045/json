@@ -25,6 +25,7 @@ package json
 import (
 	"encoding"
 	stdjson "encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -138,7 +139,14 @@ func marshalInterface(bs []byte, iface interface{}) (out []byte) {
 	case map[string]interface{}:
 		out = marshalMapInterface(out, v)
 	case []interface{}:
-		// TODO
+		out = append(out, '[')
+		for i, iface := range v {
+			if i != 0 {
+				out = append(out, ',')
+			}
+			marshalInterface(out, iface)
+		}
+		out = append(out, ']')
 	case []byte:
 		panic("TODO: []byte...")
 	default:
@@ -288,7 +296,8 @@ func marshalValue(bs []byte, value reflect.Value) (out []byte) {
 		out = append(out, '"')
 		return
 	default:
-		out = append(out, "null"...)
+		// out = append(out, "null"...)
+		panic(fmt.Sprintf("TODO: kind:%d...", value.Kind()))
 	}
 
 	return

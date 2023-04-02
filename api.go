@@ -69,6 +69,7 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 		return
 	}
 
+	// 解引用； TODO: 用 Value 的方式提高性能
 	vi := reflect.Indirect(reflect.ValueOf(in))
 	if !vi.CanSet() {
 		err = fmt.Errorf("%T cannot set", in)
@@ -84,7 +85,7 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 	store := PoolStore{
 		tag:         tag,
 		obj:         prv.ptr, // eface.Value,
-		pointerPool: tag.batchCache.Get(),
+		pointerPool: tag.ptrCache.Get(),
 	}
 	//slice 才需要的缓存
 	if tag.slicePool.New != nil {

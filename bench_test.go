@@ -118,6 +118,8 @@ func BenchmarkUnmarshal(b *testing.B) {
 				},
 			},
 		}
+		var m testdata.Twitter
+		lxt.UnmarshalString(data, &m)
 		for _, r := range runs {
 			b.Run(r.name, func(b *testing.B) {
 				b.ReportAllocs()
