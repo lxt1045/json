@@ -7,6 +7,8 @@ Trying to implement the fastest JSON library for golang.
 
 当前还有一些特性没有实现，且许多边界条件还未覆盖。
 
+边界条件：循环类型
+
 # 性能表现
 以纯 Go 语言实现，在性能略胜于 SIMD 实现的 [sonic](https://github.com/bytedance/sonic)。
 ## 1. sonic 的测试用例

@@ -207,6 +207,7 @@ func StringToBytes(s string) []byte {
 }
 
 /*
+go test -benchmem -run=^$ -v -benchtime=10000000x -bench ^BenchmarkUnmarshalType$ github.com/lxt1045/json -count=1
 
 go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalType$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalType$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
@@ -221,6 +222,24 @@ BenchmarkUnmarshalType/[]int-10-lxt
 BenchmarkUnmarshalType/[]int-10-lxt-12          	  869449	      1217 ns/op	    1018 B/op	       0 allocs/op
 BenchmarkUnmarshalType/[]int-10-sonic
 BenchmarkUnmarshalType/[]int-10-sonic-12        	 1950355	       620.3 ns/op	       0 B/op	       0 allocs/op
+
+
+BenchmarkUnmarshalType/[]json_test.X-10-lxt
+BenchmarkUnmarshalType/[]json_test.X-10-lxt-12         	  394222	      3340 ns/op	    1280 B/op	       0 allocs/op
+BenchmarkUnmarshalType/[]json_test.X-10-sonic
+BenchmarkUnmarshalType/[]json_test.X-10-sonic-12       	  289731	      3650 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshalType/Marshal-[]json_test.X-10-lxt
+BenchmarkUnmarshalType/Marshal-[]json_test.X-10-lxt-12 	 1000000	      1099 ns/op	     708 B/op	       0 allocs/op
+BenchmarkUnmarshalType/Marshal-[]json_test.X-10-sonic
+BenchmarkUnmarshalType/Marshal-[]json_test.X-10-sonic-12         	  617835	      1633 ns/op	     969 B/op	       4 allocs/op
+BenchmarkUnmarshalType/[]json_test.Y-10-lxt
+BenchmarkUnmarshalType/[]json_test.Y-10-lxt-12                   	  434506	      2731 ns/op	    1139 B/op	       0 allocs/op
+BenchmarkUnmarshalType/[]json_test.Y-10-sonic
+BenchmarkUnmarshalType/[]json_test.Y-10-sonic-12                 	  349038	      3633 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-lxt
+BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-lxt-12           	 1673920	       711.9 ns/op	     585 B/op	       0 allocs/op
+BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-sonic
+BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-sonic-12         	 1000000	      1008 ns/op	     842 B/op	       4 allocs/op
 */
 
 func BenchmarkUnmarshalType(b *testing.B) {
@@ -254,7 +273,7 @@ func BenchmarkUnmarshalType(b *testing.B) {
 	}
 	N := 10
 	idxs := []int{}
-	// idxs = []int{8, 9, 10, 11}
+	idxs = []int{7}
 	if len(idxs) > 0 {
 		get := all[:0]
 		for _, i := range idxs {
@@ -292,6 +311,7 @@ func BenchmarkUnmarshalType(b *testing.B) {
 				}
 			}
 		})
+		// continue
 		runtime.GC()
 		b.Run(fmt.Sprintf("%s-%d-sonic", fieldType, N), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -301,7 +321,17 @@ func BenchmarkUnmarshalType(b *testing.B) {
 				}
 			}
 		})
-		// continue
+		runtime.GC()
+		b.Run(fmt.Sprintf("%s-%d-lxt", fieldType, N), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				err := lxt.UnmarshalString(str, value)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		continue
 		runtime.GC()
 		// b.Run(fmt.Sprintf("%s-%d-std", fieldType, N), func(b *testing.B) {
 		// 	for i := 0; i < b.N; i++ {

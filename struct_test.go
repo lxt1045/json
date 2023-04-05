@@ -31,6 +31,18 @@ func TestStruct(t *testing.T) {
 	}{
 		{
 			name:   "struct:" + fLine(),
+			bs:     `{"out": -0.1 , "struct_0": [{ "count":8,"Anonymous":{"X":"xxx","Count":1}}]}`,
+			target: `{"out":-0.1,"struct_0":[{"count":8,"Anonymous":{"count":0,"X":"xxx"}}]}`,
+			data: &struct {
+				Out    float32 `json:"out"`
+				Struct []struct {
+					Count     int `json:"count"`
+					Anonymous Anonymous
+				} `json:"struct_0"`
+			}{},
+		},
+		{
+			name:   "struct:" + fLine(),
 			bs:     `{"out": 11 , "struct_0": [{ "count":8,"Anonymous":{"X":"xxx","Count":1}}]}`,
 			target: `{"out":11,"struct_0":[{"count":8,"Anonymous":{"count":0,"X":"xxx"}}]}`,
 			data: &struct {

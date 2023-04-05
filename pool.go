@@ -145,7 +145,7 @@ func LoadTagNodeByType(typ reflect.Type, hash uint32) (*TagInfo, error) {
 }
 
 func LoadTagNodeSlow(typ reflect.Type, hash uint32) (*TagInfo, error) {
-	ti, err := NewStructTagInfo(typ)
+	ti, err := NewStructTagInfo(typ, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -225,17 +225,21 @@ type sliceNode[T any] struct {
 	idx uint32 // atomic
 }
 type Batch[T any] struct {
-	pool unsafe.Pointer // *sliceNode[T]
+	pool   unsafe.Pointer // *sliceNode[T]
+	backup *sliceNode[T]
 	sync.Mutex
 }
 
 func NewBatch[T any]() *Batch[T] {
-	sn := &sliceNode[T]{
-		s:   nil, // make([]T, batchN),
-		idx: 0,
-	}
 	ret := &Batch[T]{
-		pool: unsafe.Pointer(sn),
+		pool: unsafe.Pointer(&sliceNode[T]{
+			s:   make([]T, batchN),
+			idx: 0,
+		}),
+		backup: &sliceNode[T]{
+			s:   make([]T, batchN),
+			idx: 0,
+		},
 	}
 	return ret
 }
@@ -261,10 +265,29 @@ func (b *Batch[T]) Get() *T {
 func (b *Batch[T]) GetN(n int) *T {
 	sn := (*sliceNode[T])(atomic.LoadPointer(&b.pool))
 	idx := atomic.AddUint32(&sn.idx, uint32(n))
-	if int(idx) <= len(sn.s) {
-		return &sn.s[int(idx)-n]
+	var p *T
+	if int(idx) > len(sn.s) {
+		p = b.MakeN(n)
+	} else {
+		p = &sn.s[int(idx)-n]
 	}
-	return b.MakeN(n)
+	return p
+}
+
+func (b *Batch[T]) GetN2(n int) (s []T) {
+	sn := (*sliceNode[T])(atomic.LoadPointer(&b.pool))
+	idx := atomic.AddUint32(&sn.idx, uint32(n))
+	var p *T
+	if int(idx) > len(sn.s) {
+		p = b.MakeN(n)
+	} else {
+		p = &sn.s[int(idx)-n]
+	}
+
+	sh := (*SliceHeader)(unsafe.Pointer(&s))
+	sh.Data = unsafe.Pointer(p)
+	sh.Cap = n
+	return
 
 }
 
@@ -278,11 +301,22 @@ func (b *Batch[T]) Make() (p *T) {
 		p = &sn.s[idx-1]
 		return
 	}
-	sn = &sliceNode[T]{
+
+	if b.backup != nil {
+		sn = b.backup
+		sn.idx = 1
+		b.backup = nil
+	} else {
+		sn = &sliceNode[T]{
+			s:   make([]T, batchN),
+			idx: 1,
+		}
+	}
+	atomic.StorePointer(&b.pool, unsafe.Pointer(sn))
+	b.backup = &sliceNode[T]{
 		s:   make([]T, batchN),
 		idx: 1,
 	}
-	atomic.StorePointer(&b.pool, unsafe.Pointer(sn))
 	p = &sn.s[0]
 	return
 }
@@ -300,11 +334,21 @@ func (b *Batch[T]) MakeN(n int) (p *T) {
 		p = &sn.s[idx-1]
 		return
 	}
-	sn = &sliceNode[T]{
-		s:   make([]T, batchN),
-		idx: uint32(n),
+	if b.backup != nil {
+		sn = b.backup
+		sn.idx = uint32(n)
+		b.backup = nil
+	} else {
+		sn = &sliceNode[T]{
+			s:   make([]T, batchN),
+			idx: uint32(n),
+		}
 	}
 	atomic.StorePointer(&b.pool, unsafe.Pointer(sn))
+	b.backup = &sliceNode[T]{
+		s:   make([]T, batchN),
+		idx: 0,
+	}
 	p = &sn.s[0]
 	return
 }
@@ -406,10 +450,10 @@ type Store struct {
 }
 type PoolStore struct {
 	obj         unsafe.Pointer
-	pointerPool unsafe.Pointer
-	slicePool   unsafe.Pointer
-	dynPool     *dynamicPool
 	tag         *TagInfo
+	pointerPool unsafe.Pointer // 也放 tag？放这里能省多少性能？
+	slicePool   unsafe.Pointer // 这 slicePool 放 tag，dynPool 放全局，是不是可以减少 copy ？ 顺便较少函数调用时栈的开销？
+	dynPool     *dynamicPool
 }
 
 type dynamicPool struct {
@@ -419,6 +463,13 @@ type dynamicPool struct {
 	ifacePool    []interface{} //
 	ifaceMapPool []interface{} //
 }
+
+var (
+	gStringPool    = NewBatch[string]()      // string 类型太常见了
+	gNoscanPool    = NewBatch[byte]()        // 不含指针的类型都可以用这个分配
+	gIntPool       = NewBatch[int]()         //
+	gInterfacePool = NewBatch[interface{}]() //
+)
 
 var dynPool = sync.Pool{
 	New: func() any {

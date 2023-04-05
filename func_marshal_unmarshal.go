@@ -65,12 +65,12 @@ func bytesGet(store Store, in []byte) (out []byte) {
 	return
 }
 
-func boolMFuncs2(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
+func boolMFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	if pidx == nil {
 		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			iSlash = idxSlash
 			store.obj = pointerOffset(store.obj, store.tag.Offset)
-			if stream[0] == 't' && stream[i+1] == 'r' && stream[i+2] == 'u' && stream[i+3] == 'e' {
+			if stream[0] == 't' && stream[1] == 'r' && stream[2] == 'u' && stream[3] == 'e' {
 				i = 4
 				*(*bool)(store.obj) = true
 			} else if stream[0] == 'f' && stream[1] == 'a' && stream[2] == 'l' && stream[3] == 's' && stream[4] == 'e' {
@@ -98,7 +98,7 @@ func boolMFuncs2(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		iSlash = idxSlash
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
-		if stream[0] == 't' && stream[i+1] == 'r' && stream[i+2] == 'u' && stream[i+3] == 'e' {
+		if stream[0] == 't' && stream[1] == 'r' && stream[2] == 'u' && stream[3] == 'e' {
 			i = 4
 			store.obj = store.Idx(*pidx)
 			*(*bool)(store.obj) = true
@@ -211,18 +211,8 @@ func int64MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 				i = 4
 				return
 			}
-			for ; i < len(stream); i++ {
-				c := stream[i]
-				if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-					break
-				}
-			}
+			num, i := ParseInt(stream)
 			store.obj = pointerOffset(store.obj, store.tag.Offset)
-			num, err := strconv.ParseInt(stream[:i], 10, 64)
-			if err != nil {
-				err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-				panic(err)
-			}
 			*(*int64)(store.obj) = num
 			return
 		}
@@ -236,19 +226,9 @@ func int64MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	}
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		iSlash = idxSlash
-		for ; i < len(stream); i++ {
-			c := stream[i]
-			if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-				break
-			}
-		}
+		num, i := ParseInt(stream)
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
 		store.obj = store.Idx(*pidx)
-		num, err := strconv.ParseInt(stream[:i], 10, 64)
-		if err != nil {
-			err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-			panic(err)
-		}
 		*(*int64)(store.obj) = num
 		return
 	}
@@ -329,18 +309,8 @@ func int32MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	if pidx == nil {
 		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			iSlash = idxSlash
-			for ; i < len(stream); i++ {
-				c := stream[i]
-				if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-					break
-				}
-			}
+			num, i := ParseInt(stream)
 			store.obj = pointerOffset(store.obj, store.tag.Offset)
-			num, err := strconv.ParseInt(stream[:i], 10, 64)
-			if err != nil {
-				err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-				panic(err)
-			}
 			*(*int32)(store.obj) = int32(num)
 			return
 		}
@@ -354,19 +324,9 @@ func int32MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	}
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		iSlash = idxSlash
-		for ; i < len(stream); i++ {
-			c := stream[i]
-			if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-				break
-			}
-		}
+		num, i := ParseInt(stream)
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
 		store.obj = store.Idx(*pidx)
-		num, err := strconv.ParseInt(stream[:i], 10, 64)
-		if err != nil {
-			err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-			panic(err)
-		}
 		*(*int32)(store.obj) = int32(num)
 		return
 	}
@@ -447,18 +407,8 @@ func int16MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	if pidx == nil {
 		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			iSlash = idxSlash
-			for ; i < len(stream); i++ {
-				c := stream[i]
-				if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-					break
-				}
-			}
+			num, i := ParseInt(stream)
 			store.obj = pointerOffset(store.obj, store.tag.Offset)
-			num, err := strconv.ParseInt(stream[:i], 10, 64)
-			if err != nil {
-				err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-				panic(err)
-			}
 			*(*int16)(store.obj) = int16(num)
 			return
 		}
@@ -472,19 +422,9 @@ func int16MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	}
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		iSlash = idxSlash
-		for ; i < len(stream); i++ {
-			c := stream[i]
-			if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-				break
-			}
-		}
+		num, i := ParseInt(stream)
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
 		store.obj = store.Idx(*pidx)
-		num, err := strconv.ParseInt(stream[:i], 10, 64)
-		if err != nil {
-			err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-			panic(err)
-		}
 		*(*int16)(store.obj) = int16(num)
 		return
 	}
@@ -561,7 +501,7 @@ func uint8MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	return
 }
 
-func int8MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
+func int8MFuncs1(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	if pidx == nil {
 		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			iSlash = idxSlash
@@ -590,19 +530,161 @@ func int8MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	}
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		iSlash = idxSlash
-		for ; i < len(stream); i++ {
-			c := stream[i]
-			if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-				break
-			}
-		}
+		num, i := ParseInt(stream)
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
 		store.obj = store.Idx(*pidx)
-		num, err := strconv.ParseInt(stream[:i], 10, 64)
-		if err != nil {
-			err = lxterrs.Wrap(err, ErrStream(stream[:i]))
-			panic(err)
+		*(*int8)(store.obj) = int8(num)
+		return
+	}
+	fM = func(store Store, in []byte) (out []byte) {
+		// store.obj = pointerOffset(store.obj, store.tag.Offset)
+		store.obj = *(*unsafe.Pointer)(store.obj)
+		if store.obj == nil {
+			out = append(in, "null"...)
+			return
 		}
+		num := *(*int8)(store.obj)
+		out = strconv.AppendInt(in, int64(num), 10)
+		return
+	}
+	return
+}
+
+//数值：十进制数，不能有前导0，可以为负数，可以有小数部分。还可以用e或者E表示指数部分。
+// 不能包含非数，如NaN。不区分整数与浮点数。JavaScript用双精度浮点数表示所有数值。
+var toNums = func() (out [128]int8) {
+	nums := map[int]int8{
+		'0': 0, '1': 1, '2': 2, '3': 3, '4': 4,
+		'5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+	}
+	for c := range out {
+		if spaceTable[c] || c == ']' || c == '}' || c == ',' {
+			out[c] = -3
+			continue
+		}
+		if n, ok := nums[c]; ok {
+			out[c] = n
+			continue
+		}
+		out[c] = -4
+	}
+	out['.'] = -1
+	out['e'] = -2
+	out['E'] = -2
+	out['-'] = -5
+	out['+'] = -6
+	return
+}()
+
+func ParseInt(stream string) (num int64, i int) {
+	var e, float, nFloat int64 = 0, 0, 0
+	sign, eFlag, floatFlag := false, false, false
+	for i < len(stream) {
+		c := stream[i]
+		nextNum := toNums[c]
+		if nextNum >= 0 {
+			num = num*10 + int64(nextNum)
+			i++
+			continue
+		}
+		if nextNum == -3 {
+			break // 退出条件
+		}
+
+		// 非主流逻辑分支后置，保持主要分支简单快速
+		if i == 0 {
+			if stream[0] == '-' {
+				sign = true
+				i++
+				continue
+			} else if stream[0] == '+' {
+				i++
+				continue
+			}
+		}
+		if !eFlag && nextNum == -1 {
+			eFlag = true // e 或 E
+			for i++; i < len(stream); i++ {
+				c := stream[i]
+				nextNum = toNums[c]
+				if nextNum >= 0 {
+					e = e*10 + int64(nextNum)
+					continue
+				}
+				break
+			}
+			if nextNum == -3 {
+				E := int64(1)
+				for j := int64(0); j < e; j++ {
+					E *= 10
+				}
+				if num == 0 && E > 1 {
+					num = 1
+				}
+				num *= E
+				if float > 0 {
+					f := float64(float)
+					nFloat = nFloat - e
+					if nFloat > 0 {
+						for j := int64(0); j < nFloat; j++ {
+							f /= 10
+						}
+					} else {
+						nFloat = -nFloat
+						for j := int64(0); j < nFloat; j++ {
+							f *= 10
+						}
+					}
+					num = num + int64(f)
+				}
+				break
+			}
+			continue
+		}
+		if !eFlag && !floatFlag && nextNum == -2 {
+			floatFlag = true // .
+			for i++; i < len(stream); i++ {
+				c := stream[i]
+				nextNum = toNums[c]
+				if nextNum >= 0 {
+					float = float*10 + int64(nextNum)
+					nFloat++
+					continue
+				}
+				break
+			}
+			continue
+		}
+		err := lxterrs.New("error ParseInt:%s", ErrStream(stream[:i]))
+		panic(err)
+	}
+	if sign {
+		num = num * -1
+	}
+	return
+}
+
+func int8MFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
+	if pidx == nil {
+		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
+			iSlash = idxSlash
+			num, i := ParseInt(stream)
+			*(*int8)(store.obj) = int8(num)
+			return
+		}
+		fM = func(store Store, in []byte) (out []byte) {
+			// store.obj = pointerOffset(store.obj, store.tag.Offset)
+			num := *(*int64)(store.obj)
+			out = strconv.AppendInt(in, num, 10)
+			return
+		}
+		return
+	}
+	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
+		iSlash = idxSlash
+		num, i := ParseInt(stream)
+		store.obj = pointerOffset(store.obj, store.tag.Offset)
+		store.obj = store.Idx(*pidx)
 		*(*int8)(store.obj) = int8(num)
 		return
 	}

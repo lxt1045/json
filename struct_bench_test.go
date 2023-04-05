@@ -718,12 +718,14 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		str := string(bsOut)
 		str2 := string(testdata.BookDataOut)
 		for i := range str2 {
-			if str[i] != str2[i] {
+			if len(str) > i && str[i] != str2[i] {
 				l := len(str2)
 				if l-i > 8 {
 					l = i + 8
 				}
-				b.Logf("i:%d, c:%s,%s", i, str[i:l], str2[i:l])
+				if len(str) >= len(str2) {
+					b.Logf("i:%d, c:%s,%s", i, str[i:l], str2[i:l])
+				}
 			}
 		}
 		b.Fatalf("len:%d,%d,bsOut:%s", len(str), len(str2), str)
@@ -1291,7 +1293,7 @@ func Test_tagParse(t *testing.T) {
 		d := DataSt{}
 		typ := reflect.TypeOf(&d)
 		typ = typ.Elem()
-		to, err := NewStructTagInfo(typ)
+		to, err := NewStructTagInfo(typ, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
