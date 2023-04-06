@@ -596,7 +596,7 @@ func BenchmarkUnmarshalStruct1x(b *testing.B) {
 		},
 	}
 
-	for _, r := range runs[:1] {
+	for _, r := range runs[:] {
 		b.Run(r.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				r.f()

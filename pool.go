@@ -362,6 +362,7 @@ type sliceObj struct {
 //BatchObj 通过批量创建的方式减少单个创建平均延时
 type BatchObj struct {
 	pool   unsafe.Pointer // *sliceObj[T]
+	backup *sliceObj
 	goType *GoType
 	size   uint32
 	sync.Mutex
@@ -434,13 +435,49 @@ func (b *BatchObj) MakeN(n int) (p unsafe.Pointer) {
 	if idx <= sn.end {
 		return pointerOffset(sn.p, uintptr(idx-offset))
 	}
-	const N = 1 << 10
+	const N = 1 << 12
 	sn = &sliceObj{
 		p:   unsafe_NewArray(b.goType, N),
 		idx: offset,
 		end: uint32(N) * uint32(b.goType.Size),
 	}
 	atomic.StorePointer(&b.pool, unsafe.Pointer(sn))
+	return sn.p
+}
+
+func (b *BatchObj) MakeN2(n int) (p unsafe.Pointer) {
+	if n > batchN {
+		return unsafe_NewArray(b.goType, n)
+	}
+	b.Lock()
+	defer b.Unlock()
+	sn := (*sliceObj)(atomic.LoadPointer(&b.pool))
+	offset := uint32(n) * b.size
+	idx := atomic.AddUint32(&sn.idx, offset)
+	if idx <= sn.end {
+		return pointerOffset(sn.p, uintptr(idx-offset))
+	}
+	const N = 1 << 12
+
+	if b.backup != nil {
+		sn = b.backup
+		sn.idx = offset
+		b.backup = nil
+	} else {
+		sn = &sliceObj{
+			p:   unsafe_NewArray(b.goType, N),
+			idx: offset,
+			end: uint32(N) * uint32(b.goType.Size),
+		}
+	}
+	atomic.StorePointer(&b.pool, unsafe.Pointer(sn))
+
+	b.backup = &sliceObj{
+		p:   unsafe_NewArray(b.goType, N),
+		idx: 0,
+		end: uint32(N) * uint32(b.goType.Size),
+	}
+
 	return sn.p
 }
 
@@ -453,15 +490,6 @@ type PoolStore struct {
 	tag         *TagInfo
 	pointerPool unsafe.Pointer // 也放 tag？放这里能省多少性能？
 	slicePool   unsafe.Pointer // 这 slicePool 放 tag，dynPool 放全局，是不是可以减少 copy ？ 顺便较少函数调用时栈的开销？
-	dynPool     *dynamicPool
-}
-
-type dynamicPool struct {
-	noscanPool   []byte        // 不含指针的
-	intsPool     []int         // 不含指针的
-	stringPool   []string      //
-	ifacePool    []interface{} //
-	ifaceMapPool []interface{} //
 }
 
 var (
@@ -471,30 +499,9 @@ var (
 	gInterfacePool = NewBatch[interface{}]() //
 )
 
-var dynPool = sync.Pool{
-	New: func() any {
-		return &dynamicPool{}
-	},
-}
-
 func (ps PoolStore) Idx(idx uintptr) (p unsafe.Pointer) {
 	p = pointerOffset(ps.pointerPool, idx)
 	*(*unsafe.Pointer)(ps.obj) = p
-	return
-}
-
-func (ps PoolStore) GetNoscan() []byte {
-	pool := ps.dynPool.noscanPool
-	ps.dynPool.noscanPool = nil
-	if cap(pool)-len(pool) > 0 {
-		return pool
-	}
-	l := 8 * 1024
-	return make([]byte, 0, l)
-}
-
-func (ps PoolStore) SetNoscan(pool []byte) {
-	ps.dynPool.noscanPool = pool
 	return
 }
 
@@ -512,22 +519,6 @@ func GrowBytes(in []byte, need int) []byte {
 	out = append(out, in...)
 	return out[:l]
 }
-
-func (ps PoolStore) GetStrings() []string {
-	pool := ps.dynPool.stringPool
-	ps.dynPool.stringPool = nil
-	if cap(pool)-len(pool) > 0 {
-		return pool
-	}
-	l := 1024
-	return make([]string, 0, l)
-}
-
-func (ps PoolStore) SetStrings(strs []string) {
-	ps.dynPool.stringPool = strs
-	return
-}
-
 func GrowStrings(in []string, need int) []string {
 	l := need + len(in)
 	if l <= cap(in) {
@@ -541,23 +532,6 @@ func GrowStrings(in []string, need int) []string {
 	out := make([]string, 0, l)
 	out = append(out, in...)
 	return out[:need+len(in)]
-}
-
-func (ps PoolStore) GetInts() []int {
-	pool := ps.dynPool.intsPool
-	ps.dynPool.intsPool = nil
-	if cap(pool)-len(pool) > 0 {
-		return pool
-	}
-	l := 1024
-	return make([]int, 0, l)
-}
-
-func (ps PoolStore) SetInts(strs []int) {
-	if cap(strs)-len(strs) > 4 {
-		ps.dynPool.intsPool = strs
-		return
-	}
 }
 
 func GrowInts(in []int) []int {
@@ -625,34 +599,4 @@ func GrowObjs(in []uint8, need int, goType *GoType) []uint8 {
 
 	out = append(out, in...)
 	return out[:need+len(in)]
-}
-
-func (ps PoolStore) GetPointers() []string { // []unsafe.Pointer
-	pool := ps.dynPool.stringPool
-	ps.dynPool.stringPool = nil
-	if cap(pool)-len(pool) > 0 {
-		return pool
-	}
-	l := 1024
-	return make([]string, 0, l)
-}
-
-func (ps PoolStore) SetPointers(strs []string) {
-	ps.dynPool.stringPool = strs
-	return
-}
-
-func GrowPointers(in []string, need int) []string {
-	l := need + len(in)
-	if l <= cap(in) {
-		return in[:l]
-	}
-	if l < 1024 {
-		l = 1024
-	} else {
-		l *= 2
-	}
-	out := make([]string, 0, l)
-	out = append(out, in...)
-	return out[:l]
 }

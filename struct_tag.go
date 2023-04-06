@@ -34,6 +34,11 @@ import (
 
 //TagInfo 拥有tag的struct的成员的解析结果
 type TagInfo struct {
+	// 常用的放前面，在缓存的概率大
+	fUnm       unmFunc
+	fM         mFunc
+	sliceCache *BatchObj
+
 	TagName      string       //
 	BaseType     reflect.Type //
 	BaseKind     reflect.Kind // 次成员可能是 **string,[]int 等这种复杂类型,这个 用来指示 "最里层" 的类型
@@ -65,8 +70,6 @@ type TagInfo struct {
 	bsMarshalLen int32 // 缓存上次 生成的 bs 的大小，如果 cache 小于这个值，则丢弃
 	bsHaftCount  int32 // 记录上次低于 bsMarshalLen/2 的次数
 
-	fUnm unmFunc
-	fM   mFunc
 }
 
 const SPoolN = 1024 // * 1024
@@ -189,6 +192,8 @@ func (ti *TagInfo) setFuncs(ptrBuilder, sliceBuilder *TypeBuilder, typ reflect.T
 			if err != nil {
 				return nil, lxterrs.Wrap(err, "Struct")
 			}
+			subSon.sliceCache = NewBatchObj(sliceType)
+
 			err = ti.AddChild(subSon) //TODO: err = ti.AddChild(son) ?
 			// err = ti.AddChild(son)
 			if err != nil {

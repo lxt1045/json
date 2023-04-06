@@ -90,12 +90,10 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 	//slice 才需要的缓存
 	if tag.slicePool.New != nil {
 		store.slicePool = tag.slicePool.Get().(unsafe.Pointer)
-		store.dynPool = dynPool.Get().(*dynamicPool)
 
 		err = parseRoot(bs[i:], store)
 
 		tag.slicePool.Put(store.slicePool)
-		dynPool.Put(store.dynPool)
 	} else {
 		err = parseRoot(bs[i:], store)
 	}

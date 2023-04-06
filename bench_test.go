@@ -273,7 +273,7 @@ func BenchmarkUnmarshalType(b *testing.B) {
 	}
 	N := 10
 	idxs := []int{}
-	idxs = []int{7}
+	// idxs = []int{7}
 	if len(idxs) > 0 {
 		get := all[:0]
 		for _, i := range idxs {

@@ -123,7 +123,6 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 				tag:         son,
 				pointerPool: store.pointerPool,
 				slicePool:   store.slicePool,
-				dynPool:     store.dynPool,
 				obj:         store.obj,
 			}
 			n, iSlash = son.fUnm(iSlash-i, storeSon, stream[i:])
@@ -132,15 +131,32 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 			n = parseEmpty(stream[i:])
 		}
 		i += n
-		// 解析 逗号
-		n, nB = parseByte(stream[i:], ',')
-		i += n
-		if nB != 1 {
-			if nB == 0 && '}' == stream[i] {
-				i++
-				return
+		// // 解析 逗号
+		// n, nB = parseByte(stream[i:], ',')
+		// i += n
+		// if nB != 1 {
+		// 	if nB == 0 && '}' == stream[i] {
+		// 		i++
+		// 		return
+		// 	}
+		// 	panic(lxterrs.New(ErrStream(stream[i:])))
+		// }
+		if stream[i] == ',' && !spaceTable[stream[i+1]] {
+			i++ // 最常命中分支
+		} else if stream[i] == '}' {
+			i++ // 结束时命中分支
+			return
+		} else {
+			// 有空格时命中分支
+			n, nB = parseByte(stream[i:], ',')
+			i += n
+			if nB != 1 {
+				if nB == 0 && '}' == stream[i] {
+					i++
+					return
+				}
+				panic(lxterrs.New(ErrStream(stream[i:])))
 			}
-			panic(lxterrs.New(ErrStream(stream[i:])))
 		}
 	}
 }
@@ -419,7 +435,7 @@ func parseSlice3(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 }
 
 //parseSlice 可以细化一下，每个类型来一个，速度可以加快
-func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+func parseSlice1(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
 	if stream[i] == ']' {
@@ -472,8 +488,8 @@ func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	return
 }
 
-//parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
-func parseNoscanSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+//parseSlice 可以细化一下，每个类型来一个，速度可以加快
+func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
 	if stream[i] == ']' {
@@ -484,18 +500,24 @@ func parseNoscanSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash 
 	}
 	son := store.tag.ChildList[0]
 	size := son.TypeSize
-	bytes := store.GetNoscan()
+
+	// TODO : 从 store.pool 获取 pool
+	// uint8s := store.tag.SPool.Get().(*[]uint8) // cpu %12; , cpu 20%
+
+	// uint8s := store.GetObjs(store.tag.idxSliceObjPool, store.tag.BaseType)
+	// uint8s := store.GetObjs(store.tag.sliceElemGoType)
+	p := son.sliceCache.GetN(4)
+
+	pLen, pCap := 0, 4
+	// TODO
+	// slicePool := son.slicePool.Get().(unsafe.Pointer)
+	// sliceElemGoType := store.tag.sliceElemGoType
+	pHeader := (*SliceHeader)(store.obj)
+	store.tag = son
 	for n, nB := 0, 0; ; {
-		l := len(bytes)
-		bytes = GrowBytes(bytes, size)
-		p := unsafe.Pointer(&bytes[l])
-		n, iSlash = son.fUnm(iSlash-i, PoolStore{
-			obj:         p,
-			tag:         son,
-			pointerPool: store.pointerPool,
-			slicePool:   store.slicePool,
-			dynPool:     store.dynPool,
-		}, stream[i:])
+		store.obj = pointerOffset(p, uintptr(pLen*size))
+		n, iSlash = son.fUnm(iSlash-i, store, stream[i:])
+		pLen++
 		iSlash += i
 		i += n
 		n, nB = parseByte(stream[i:], ',')
@@ -507,15 +529,22 @@ func parseNoscanSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash 
 			}
 			panic(lxterrs.New(ErrStream(stream[i:])))
 		}
+		if pLen == pCap {
+			l := pLen * size
+			pCap = pCap * 2
+			c := pCap * size
+			pNew := son.sliceCache.GetN(pCap)
+			dst := (*[1 << 30]byte)(pNew)[:l:c]
+			src := (*[1 << 30]byte)(p)[:l:l]
+			copy(dst, src)
+			// dst = append(dst, src...)
+			p = pNew
+		}
 	}
 
-	store.SetNoscan(bytes[len(bytes):])
-	l := len(bytes) / size
-	*(*SliceHeader)(store.obj) = SliceHeader{
-		Len:  l,
-		Cap:  l,
-		Data: unsafe.Pointer(&bytes[0]),
-	}
+	pHeader.Data = p
+	pHeader.Len = pLen
+	pHeader.Cap = pCap
 	return
 }
 
@@ -542,13 +571,12 @@ func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash i
 			tag:         son,
 			pointerPool: store.pointerPool,
 			slicePool:   store.slicePool,
-			dynPool:     store.dynPool,
 		}, stream[i:])
 		pLen++
 		iSlash += i
 		i += n
 
-		if stream[i] == ',' && !spaceTable[stream[i]] {
+		if stream[i] == ',' && !spaceTable[stream[i+1]] {
 			i++ // 最常命中分支
 		} else if stream[i] == ']' {
 			i++ // 结束时命中分支
@@ -579,53 +607,6 @@ func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash i
 	sh.Data = p
 	sh.Len = pLen
 	sh.Cap = pLen
-	return
-}
-
-//parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
-func parseIntSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
-	iSlash = idxSlash
-	i = trimSpace(stream)
-	if stream[i] == ']' {
-		i++
-		pHeader := (*SliceHeader)(store.obj)
-		pHeader.Data = store.obj
-		return
-	}
-	ints := store.GetInts()
-	for n, nB := 0, 0; ; {
-		l := len(ints)
-		ints = GrowInts(ints)
-		p := unsafe.Pointer(&ints[l])
-		{
-			bs := stream[i:]
-			for n = 0; n < len(bs); n++ {
-				c := bs[n]
-				if spaceTable[c] || c == ']' || c == '}' || c == ',' {
-					break
-				}
-			}
-			num, err := strconv.ParseInt(bs[:n], 10, 64)
-			if err != nil {
-				err = lxterrs.Wrap(err, ErrStream(bs[:n]))
-				panic(err)
-			}
-			*(*int64)(p) = num
-		}
-		i += n
-		n, nB = parseByte(stream[i:], ',')
-		i += n
-		if nB != 1 {
-			if nB == 0 && ']' == stream[i] {
-				i++
-				break
-			}
-			panic(lxterrs.New(ErrStream(stream[i:])))
-		}
-	}
-
-	store.SetInts(ints[len(ints):])
-	*(*[]int)(store.obj) = ints[:len(ints):len(ints)]
 	return
 }
 
@@ -774,46 +755,7 @@ func parseSliceString1(idxSlash int, stream string, store PoolStore, SPoolN int,
 	}
 	return
 }
-func parseSliceString2(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
-	iSlash = idxSlash
-	i = trimSpace(stream[i:])
-	if stream[i] == ']' {
-		i++
-		pHeader := (*SliceHeader)(store.obj)
-		pHeader.Data = store.obj
-		return
-	}
-	strs := store.GetStrings()
-	for n, nB := 0, 0; ; {
-		strs = GrowStrings(strs, 1)
-		{
-			// 全部内联
-			i++
-			n := strings.IndexByte(stream[i:], '"')
-			n += i
-			if iSlash > n {
-				(strs)[len(strs)-1] = stream[i:n]
-				i = n + 1
-			} else {
-				(strs)[len(strs)-1], n, iSlash = parseUnescapeStr(stream[i:], n-i, iSlash)
-				iSlash += i
-				i = i + n
-			}
-		}
-		n, nB = parseByte(stream[i:], ',')
-		i += n
-		if nB != 1 {
-			if nB == 0 && ']' == stream[i] {
-				i++
-				break
-			}
-			panic(lxterrs.New(ErrStream(stream[i:])))
-		}
-	}
-	store.SetStrings(strs[len(strs):])
-	*(*[]string)(store.obj) = strs[:len(strs):len(strs)]
-	return
-}
+
 func parseSliceString(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream[i:])
