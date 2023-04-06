@@ -122,7 +122,6 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 			storeSon := PoolStore{
 				tag:         son,
 				pointerPool: store.pointerPool,
-				slicePool:   store.slicePool,
 				obj:         store.obj,
 			}
 			n, iSlash = son.fUnm(iSlash-i, storeSon, stream[i:])
@@ -435,60 +434,6 @@ func parseSlice3(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 }
 
 //parseSlice 可以细化一下，每个类型来一个，速度可以加快
-func parseSlice1(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
-	iSlash = idxSlash
-	i = trimSpace(stream)
-	if stream[i] == ']' {
-		i++
-		pHeader := (*SliceHeader)(store.obj)
-		pHeader.Data = store.obj
-		return
-	}
-	son := store.tag.ChildList[0]
-	size := son.TypeSize
-
-	// TODO : 从 store.pool 获取 pool
-	// uint8s := store.tag.SPool.Get().(*[]uint8) // cpu %12; , cpu 20%
-
-	// uint8s := store.GetObjs(store.tag.idxSliceObjPool, store.tag.BaseType)
-	uint8s := store.GetObjs(store.tag.sliceElemGoType)
-
-	pHeader := (*SliceHeader)(store.obj)
-	bases := (*[]uint8)(store.obj)
-	// TODO
-	// slicePool := son.slicePool.Get().(unsafe.Pointer)
-	sliceElemGoType := store.tag.sliceElemGoType
-	store.tag = son
-	for n, nB := 0, 0; ; {
-		uint8s = GrowObjs(uint8s, size, sliceElemGoType)
-		store.obj = unsafe.Pointer(&uint8s[len(uint8s)-size])
-		n, iSlash = son.fUnm(iSlash-i, store, stream[i:])
-		iSlash += i
-		i += n
-		n, nB = parseByte(stream[i:], ',')
-		i += n
-		if nB != 1 {
-			if nB == 0 && ']' == stream[i] {
-				i++
-				break
-			}
-			panic(lxterrs.New(ErrStream(stream[i:])))
-		}
-	}
-
-	*bases = (uint8s)[:len(uint8s):len(uint8s)]
-	if cap(uint8s)-len(uint8s) > 4*size {
-		uint8s = uint8s[len(uint8s):]
-		// store.SetObjs(uint8s, store.tag.idxSliceObjPool)
-		store.SetObjs(uint8s)
-	}
-	pHeader.Len = pHeader.Len / size
-	pHeader.Cap = pHeader.Cap / size
-
-	return
-}
-
-//parseSlice 可以细化一下，每个类型来一个，速度可以加快
 func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -509,9 +454,6 @@ func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	p := son.sliceCache.GetN(4)
 
 	pLen, pCap := 0, 4
-	// TODO
-	// slicePool := son.slicePool.Get().(unsafe.Pointer)
-	// sliceElemGoType := store.tag.sliceElemGoType
 	pHeader := (*SliceHeader)(store.obj)
 	store.tag = son
 	for n, nB := 0, 0; ; {
@@ -570,7 +512,6 @@ func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash i
 			obj:         pointerOffset(p, uintptr(pLen*size)),
 			tag:         son,
 			pointerPool: store.pointerPool,
-			slicePool:   store.slicePool,
 		}, stream[i:])
 		pLen++
 		iSlash += i

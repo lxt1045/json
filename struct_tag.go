@@ -62,9 +62,6 @@ type TagInfo struct {
 	SPoolN int32
 	SPool2 *BatchObj // 新的 slice cache
 
-	slicePool sync.Pool // &dynamicPool{} 的 pool，用于批量非配 slice
-	// idxStackDynamic uintptr   // 在 store.pool 的 index 文字
-
 	sPooloffset  int32 // slice pool 在 PoolStore的偏移量； TODO
 	psPooloffset int32 // pointer slice pool  在 PoolStore的偏移量
 	bsMarshalLen int32 // 缓存上次 生成的 bs 的大小，如果 cache 小于这个值，则丢弃
@@ -422,19 +419,6 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 	ti.ptrCache = NewBatchObj(ti.ptrCacheType)
 
 	ti.slicePoolType = sliceBuilder.Build()
-	if ti.slicePoolType != nil {
-		// batch := NewBatchObj(ti.slicePoolType)
-		goType := UnpackType(ti.slicePoolType)
-		// TODO: slicePool 忘了怎么实际的了，但是看上去没起作用，需要重新设计
-		// 实际上：如果每次分配 slice 都从共的 slice 中分配 2 倍空间，
-		// 只是空间利用率可能要点，但是最多也就低一半而已，看上去完全可以接受
-		ti.slicePool = sync.Pool{
-			New: func() any {
-				return unsafe_NewArray(goType, 1)
-				// return batch.Get()
-			},
-		}
-	}
 	return
 }
 

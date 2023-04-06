@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"reflect"
 	"sync/atomic"
-	"unsafe"
 
 	lxterrs "github.com/lxt1045/errors"
 )
@@ -87,16 +86,9 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 		obj:         prv.ptr, // eface.Value,
 		pointerPool: tag.ptrCache.Get(),
 	}
-	//slice 才需要的缓存
-	if tag.slicePool.New != nil {
-		store.slicePool = tag.slicePool.Get().(unsafe.Pointer)
 
-		err = parseRoot(bs[i:], store)
+	err = parseRoot(bs[i:], store)
 
-		tag.slicePool.Put(store.slicePool)
-	} else {
-		err = parseRoot(bs[i:], store)
-	}
 	return
 }
 
