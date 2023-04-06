@@ -1196,6 +1196,7 @@ func slicePointerMFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	}
 	return
 }
+
 func sliceStringsMFuncs() (fUnm unmFunc, fM mFunc) {
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 		if stream[0] == 'n' && stream[1] == 'u' && stream[2] == 'l' && stream[3] == 'l' {
@@ -1251,7 +1252,8 @@ func stringM(store Store, in []byte) (out []byte) {
 	out = append(out, '"')
 	return
 }
-func stringMFuncs2(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
+
+func stringMFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	if pidx == nil {
 		fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 			if stream[0] == 'n' && stream[1] == 'u' && stream[2] == 'l' && stream[3] == 'l' {

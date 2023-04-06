@@ -89,7 +89,7 @@ go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalPoniter$ github.com/lxt104
 go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalPoniter$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
 */
-func BenchmarkMyUnmarshalMarshalPoniter(b *testing.B) {
+func BenchmarkMyUnmarshalPoniter(b *testing.B) {
 	type Name struct {
 		ZHCN  *string `json:"ZH_CN"`
 		ZHCN1 *string `json:"ZH_CN1"`
@@ -153,6 +153,7 @@ func BenchmarkMyUnmarshalMarshalPoniter(b *testing.B) {
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
 	})
+	// return
 	b.Run("sonic-p", func(b *testing.B) {
 		d := Name{}
 		b.ReportAllocs()

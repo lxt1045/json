@@ -147,7 +147,7 @@ func (ti *TagInfo) setFuncs(ptrBuilder, sliceBuilder *TypeBuilder, typ reflect.T
 	case reflect.Float32:
 		ti.fUnm, ti.fM = float32MFuncs(pidx)
 	case reflect.String:
-		ti.fUnm, ti.fM = stringMFuncs2(pidx)
+		ti.fUnm, ti.fM = stringMFuncs(pidx)
 	case reflect.Slice: // &[]byte; Array
 		if isBytes(baseType) {
 			ti.fUnm, ti.fM = bytesMFuncs(pidx)
@@ -415,8 +415,10 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 	}
 
 	// 缓存处理
-	ti.ptrCacheType = ptrBuilder.Build()
-	ti.ptrCache = NewBatchObj(ti.ptrCacheType)
+	if len(ptrBuilder.fields) > 0 {
+		ti.ptrCacheType = ptrBuilder.Build()
+		ti.ptrCache = NewBatchObj(ti.ptrCacheType)
+	}
 
 	ti.slicePoolType = sliceBuilder.Build()
 	return

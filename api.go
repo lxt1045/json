@@ -82,9 +82,12 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 	}
 
 	store := PoolStore{
-		tag:         tag,
-		obj:         prv.ptr, // eface.Value,
-		pointerPool: tag.ptrCache.Get(),
+		tag: tag,
+		obj: prv.ptr, // eface.Value,
+		// pointerPool: tag.ptrCache.Get(),
+	}
+	if tag.ptrCache != nil {
+		store.pointerPool = tag.ptrCache.Get()
 	}
 
 	err = parseRoot(bs[i:], store)

@@ -389,7 +389,7 @@ func (b *BatchObj) Get() unsafe.Pointer {
 	if idx <= sn.end {
 		return pointerOffset(sn.p, uintptr(idx-b.size))
 	}
-	return b.Make()
+	return b.MakeN(1)
 }
 
 func (b *BatchObj) Make() unsafe.Pointer {
