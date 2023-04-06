@@ -35,11 +35,12 @@ import (
 //TagInfo 拥有tag的struct的成员的解析结果
 type TagInfo struct {
 	// 常用的放前面，在缓存的概率大
+	TagName    string //
 	fUnm       unmFunc
 	fM         mFunc
 	sliceCache *BatchObj
+	tireTree   *tireTree
 
-	TagName      string       //
 	BaseType     reflect.Type //
 	BaseKind     reflect.Kind // 次成员可能是 **string,[]int 等这种复杂类型,这个 用来指示 "最里层" 的类型
 	Offset       uintptr      //偏移量
@@ -339,6 +340,8 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 	for _, a := range ancestors {
 		if a.hash == goType.Hash {
 			ti = nil // 以返回 nil 来处理后续逻辑
+
+			// TODO: 暂时不支持嵌套循环类型
 			panic("Nested loops are not yet supported")
 			return // 避免嵌套循环
 			isNestedLoop = true
@@ -392,12 +395,19 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 			son.TagName, son.StringTag, son.OmitemptyTag = fieldTag.parse()
 		}
 
+		// 最复杂的一部分，处理不同类型的 Handler
 		_, err = son.setFuncs(ptrBuilder, sliceBuilder, field.Type, field.Anonymous, ancestors)
 		if err != nil {
 			err = lxterrs.Wrap(err, "son.setFuncs")
 			return
 		}
 		if !field.Anonymous {
+			if len(son.ChildList) > 0 {
+				son.tireTree, err = NewTireTree(son.ChildList)
+				if err != nil {
+					return
+				}
+			}
 			err = ti.AddChild(son)
 			if err != nil {
 				return
@@ -413,6 +423,12 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 			}
 		}
 	}
+	if len(ti.ChildList) > 0 {
+		ti.tireTree, err = NewTireTree(ti.ChildList)
+		if err != nil {
+			return
+		}
+	}
 
 	// 缓存处理
 	if len(ptrBuilder.fields) > 0 {
@@ -421,6 +437,7 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 	}
 
 	ti.slicePoolType = sliceBuilder.Build()
+
 	return
 }
 

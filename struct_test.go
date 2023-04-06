@@ -235,7 +235,16 @@ func TestStruct(t *testing.T) {
 			if err != nil {
 				t.Fatalf("i:%d, %s:%v\n", i, d.name, err)
 			}
-			if _, ok := (d.data).(*map[string]interface{}); ok {
+			if m, ok := (d.data).(*map[string]interface{}); ok {
+				var mm map[string]interface{}
+				json.Unmarshal([]byte(d.target), &mm)
+				for k, v := range *m {
+					asrt.Equalf(t, mm[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
+				}
+				for k, v := range mm {
+					asrt.Equalf(t, (*m)[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
+				}
+
 				t.Logf("\n%s\n%s", string(d.target), string(bs))
 				// asrt.EqualValuesf(t, d.target, string(bs), d.name)
 			} else if _, ok := (d.data).(*interface{}); ok {

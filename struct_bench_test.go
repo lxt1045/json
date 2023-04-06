@@ -327,7 +327,7 @@ func BenchmarkMyUnmarshal3(b *testing.B) {
 }
 
 /*
-go test -benchmem -run=^$ -bench ^BenchmarkUnMarshalStruct$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
+go test -benchmem -run=^$  -benchtime=10000000x -bench ^BenchmarkUnmarshalStruct$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 
 go test -benchmem -run=^$ -v -benchtime=10000000x -bench ^BenchmarkUnmarshalStruct$ github.com/lxt1045/json -count=1
 BenchmarkUnMarshalStruct/lxt-st-12              10000000               129.2 ns/op      77375851.24 MB/s               0 B/op          0 allocs/op
@@ -388,11 +388,6 @@ func BenchmarkUnmarshalStruct(b *testing.B) {
 				UnmarshalString(str, &d)
 			},
 		},
-		{"lxt-st",
-			func() {
-				Unmarshal(bs, &d)
-			},
-		},
 		{
 			"sonic-st",
 			func() {
@@ -413,6 +408,7 @@ func BenchmarkUnmarshalStruct(b *testing.B) {
 	}
 
 	for _, r := range runs[:] {
+		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
@@ -524,10 +520,10 @@ func BenchmarkUnMarshalStructMap(b *testing.B) {
 }
 
 /*
-go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalStruct1x$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
+go test -benchmem -run=^$ -benchtime=1000000x -bench ^BenchmarkUnmarshalStruct1x$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalStruct1x$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-go test -benchmem -run=^$ -benchtime=1000000x -bench "^BenchmarkUnmarshalStruct1x$"
+go test -benchmem -run=^$ -benchtime=10000000x -bench "^BenchmarkUnmarshalStruct1x$"
 BenchmarkUnmarshalStruct1x/lxt-st-12             1000000              1221 ns/op             320 B/op          1 allocs/op
 BenchmarkUnmarshalStruct1x/sonic-st-12           1000000              1571 ns/op             364 B/op          1 allocs/op
 BenchmarkUnmarshalStruct1x/lxt-st#01-12          1000000              1202 ns/op             320 B/op          1 allocs/op
@@ -551,6 +547,27 @@ func BenchmarkUnmarshalStruct1x(b *testing.B) {
 		b.Fatal(err)
 	}
 
+	runtime.GC()
+	m := J0{}
+	b.Run("lxt-Unmarshal", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			err := UnmarshalString(data, &m)
+			if err != nil {
+				panic(err)
+			}
+		}
+	})
+	// return
+	runtime.GC()
+	b.Run("lxt-Unmarshal", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			err := sonic.UnmarshalString(data, &m)
+			if err != nil {
+				panic(err)
+			}
+		}
+	})
+	// return
 	runtime.GC()
 	_ = fmt.Sprintf("d :%+v", d)
 	runs := []struct {
@@ -598,6 +615,7 @@ func BenchmarkUnmarshalStruct1x(b *testing.B) {
 	}
 
 	for _, r := range runs[:] {
+		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				r.f()
@@ -737,7 +755,7 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 	}{
 		{"lxt-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -747,7 +765,7 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -756,7 +774,7 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		},
 		{"lxt-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -766,7 +784,7 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -775,7 +793,7 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		},
 		{"std-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := json.Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -842,8 +860,8 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 	}
 	if string(bsOut) != testdata.TwitterJsonOut {
 		str := string(bsOut)
-		for i := range str {
-			if str[i] != testdata.TwitterJsonOut[i] {
+		for i := range testdata.TwitterJsonOut {
+			if len(str) > i+8 && str[i] != testdata.TwitterJsonOut[i] {
 				b.Logf("i:%d, c:%s,%s", i, str[i:i+8], testdata.TwitterJsonOut[i:i+8])
 			}
 		}
@@ -855,7 +873,7 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 	}{
 		{"lxt-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -865,7 +883,7 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -874,7 +892,7 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 		},
 		{"lxt-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -884,7 +902,7 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -893,7 +911,7 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 		},
 		{"std-st",
 			func() {
-				m := testdata.Book{}
+				// m := testdata.Book{}
 				err := json.Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -983,7 +1001,7 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 	}{
 		{"lxt-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -993,7 +1011,7 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -1002,7 +1020,7 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 		},
 		{"lxt-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)
@@ -1012,7 +1030,7 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 		{
 			"sonic-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := sonic.UnmarshalString(data, &m)
 				if err != nil {
 					panic(err)
@@ -1021,7 +1039,7 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 		},
 		{"std-st",
 			func() {
-				m := testdata.TwitterStruct{}
+				// m := testdata.TwitterStruct{}
 				err := json.Unmarshal(bs, &m)
 				if err != nil {
 					panic(err)

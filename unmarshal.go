@@ -83,7 +83,7 @@ func parseObjToSlice(stream string, s []interface{}) (i int) {
 
 // 解析 {}
 // func parseObj(sts status, stream string, store PoolStore,  tag *TagInfo) (i int) {
-func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+func parseObj1(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i += trimSpace(stream[i:])
 	if stream[i] == '}' {
@@ -159,7 +159,92 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 		}
 	}
 }
+func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+	iSlash = idxSlash
+	i += trimSpace(stream[i:])
+	if stream[i] == '}' {
+		i++
+		return
+	}
+	n, nB := 0, 0
+	// key := ""
+	for {
+		// 手动内联
+		i++
+		// if store.tag.tireTree == nil {
+		// 	return
+		// }
+		// if stream[i:i+len("created_at")] == "created_at" {
+		// 	log.Println("test:", stream[i:i+len(`"created_at": "Mon Apr 26 06:01:55 +0000 2010"`)])
+		// }
+		son := store.tag.tireTree.Get(stream[i:])
+		if son != nil {
+			i += len(son.TagName) + 1
+		} else {
+			// start := i
+			// n = strings.IndexByte(stream[i+1:], '"') // 默认 stream[i] == '"'， 不做检查
+			// if n >= 0 {
+			// 	i += n + 2
+			// 	key = stream[start:i]
+			// }
 
+			// key 长度比较短，采用 for 循环比 strings.IndexByte 有优势
+			// start := i
+			for ; i < len(stream) && stream[i] != '"'; i++ {
+			}
+			// key = stream[start:i]
+			i++
+		}
+
+		// 解析 冒号
+		n, nB = parseByte(stream[i:], ':')
+		i += n
+		if nB != 1 {
+			panic(lxterrs.New(ErrStream(stream[i:])))
+		}
+		// son := store.tag.Children[string(key)] // map 查询时 []byte -> string 不需要内存分配
+
+		if son != nil {
+			storeSon := PoolStore{
+				tag:         son,
+				pointerPool: store.pointerPool,
+				obj:         store.obj,
+			}
+			n, iSlash = son.fUnm(iSlash-i, storeSon, stream[i:])
+			iSlash += i
+		} else {
+			n = parseEmpty(stream[i:])
+		}
+		i += n
+		// // 解析 逗号
+		// n, nB = parseByte(stream[i:], ',')
+		// i += n
+		// if nB != 1 {
+		// 	if nB == 0 && '}' == stream[i] {
+		// 		i++
+		// 		return
+		// 	}
+		// 	panic(lxterrs.New(ErrStream(stream[i:])))
+		// }
+		if stream[i] == ',' && !spaceTable[stream[i+1]] {
+			i++ // 最常命中分支
+		} else if stream[i] == '}' {
+			i++ // 结束时命中分支
+			return
+		} else {
+			// 有空格时命中分支
+			n, nB = parseByte(stream[i:], ',')
+			i += n
+			if nB != 1 {
+				if nB == 0 && '}' == stream[i] {
+					i++
+					return
+				}
+				panic(lxterrs.New(ErrStream(stream[i:])))
+			}
+		}
+	}
+}
 func parseMapInterface(idxSlash int, stream string) (m map[string]interface{}, i, iSlash int) {
 	iSlash = idxSlash
 	n, nB := 0, 0

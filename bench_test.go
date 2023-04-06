@@ -321,17 +321,17 @@ func BenchmarkUnmarshalType(b *testing.B) {
 				}
 			}
 		})
-		runtime.GC()
-		b.Run(fmt.Sprintf("%s-%d-lxt", fieldType, N), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				err := lxt.UnmarshalString(str, value)
-				if err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
+		// runtime.GC()
+		// b.Run(fmt.Sprintf("%s-%d-lxt", fieldType, N), func(b *testing.B) {
+		// 	for i := 0; i < b.N; i++ {
+		// 		err := lxt.UnmarshalString(str, value)
+		// 		if err != nil {
+		// 			b.Fatal(err)
+		// 		}
+		// 	}
+		// })
 
-		continue
+		// continue
 		runtime.GC()
 		// b.Run(fmt.Sprintf("%s-%d-std", fieldType, N), func(b *testing.B) {
 		// 	for i := 0; i < b.N; i++ {
