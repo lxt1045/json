@@ -28,11 +28,12 @@ import (
 
 type binTreeNode struct {
 	next uint16 // 下一个状态
-	idx  int16  // 只有 '"' 才是借宿标志，才有 idx
+	// idx  int16  // 只有 '"' 才是借宿标志，才有 idx
+	tag *TagInfo
 }
 type binTree struct {
 	tree [][128]binTreeNode // 状态
-	tags []*TagInfo
+	// tags []*TagInfo
 }
 
 func NewBinTree(tags []*TagInfo) (root *binTree, err error) {
@@ -41,11 +42,11 @@ func NewBinTree(tags []*TagInfo) (root *binTree, err error) {
 	}
 	root = &binTree{
 		tree: make([][128]binTreeNode, 1, 4),
-		tags: tags,
+		// tags: tags,
 	}
 
 out:
-	for idx, tag := range tags {
+	for _, tag := range tags {
 		key := tag.TagName
 		status := &root.tree[0]
 		for iKey, c := range []byte(key) {
@@ -55,13 +56,13 @@ out:
 			// 没有被占领或是叶子结点
 			if n.next == 0 {
 				// 没有被占领
-				if n.idx == 0 {
+				if n.tag == nil {
 					//占领此叶节点
-					n.idx = int16(idx + 1)
+					n.tag = tag
 					continue out
 				}
 				// 叶子节点
-				old := root.tags[n.idx-1].TagName
+				old := n.tag.TagName
 				if old == key {
 					err = fmt.Errorf("duplicate key: %s", key)
 					return
@@ -74,7 +75,7 @@ out:
 				}
 				// 修改老的 status
 				nOld := *n
-				n.idx = 0
+				n.tag = nil
 				n.next = uint16(len(root.tree))
 
 				// 给旧的 node 添加状态
@@ -100,10 +101,9 @@ func (b *binTree) Get(key string) *TagInfo {
 	for _, c := range []byte(key) {
 		k := c & 0x7f
 		next := status[k]
-		if next.idx != 0 {
-			tag := b.tags[next.idx-1]
-			if tag.TagName == key {
-				return tag
+		if next.tag != nil {
+			if next.tag.TagName == key {
+				return next.tag
 			}
 			return nil
 		}
