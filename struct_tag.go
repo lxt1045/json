@@ -67,6 +67,7 @@ type TagInfo struct {
 	bsMarshalLen int32 // 缓存上次 生成的 bs 的大小，如果 cache 小于这个值，则丢弃
 	bsHaftCount  int32 // 记录上次低于 bsMarshalLen/2 的次数
 
+	binTree *tireTree
 }
 
 const SPoolN = 1024 // * 1024
