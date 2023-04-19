@@ -53,7 +53,7 @@ func Benchmark_binTree(b *testing.B) {
 		{TagName: "hot"},
 		{TagName: "hots"},
 		{TagName: "author"},
-		{TagName: "autxhors"},
+		{TagName: "authors"},
 		{TagName: "weights"},
 	}
 	bintree, err := NewTireTree(tags)
@@ -66,7 +66,7 @@ func Benchmark_binTree(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			bintree.Get("weights\"")
+			bintree.Get("author\"")
 		}
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
@@ -76,7 +76,7 @@ func Benchmark_binTree(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			bintree.Get2("weights\"")
+			bintree.Get2("author\"")
 		}
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
