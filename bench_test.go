@@ -212,34 +212,6 @@ go test -benchmem -run=^$ -v -benchtime=10000000x -bench ^BenchmarkUnmarshalType
 go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalType$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkUnmarshalType$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-
-
-BenchmarkUnmarshalType/[]int8-10-lxt
-BenchmarkUnmarshalType/[]int8-10-lxt-12         	  912650	      1255 ns/op	      60 B/op	       0 allocs/op
-BenchmarkUnmarshalType/[]int8-10-sonic
-BenchmarkUnmarshalType/[]int8-10-sonic-12       	 1809181	       648.9 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshalType/[]int-10-lxt
-BenchmarkUnmarshalType/[]int-10-lxt-12          	  869449	      1217 ns/op	    1018 B/op	       0 allocs/op
-BenchmarkUnmarshalType/[]int-10-sonic
-BenchmarkUnmarshalType/[]int-10-sonic-12        	 1950355	       620.3 ns/op	       0 B/op	       0 allocs/op
-
-
-BenchmarkUnmarshalType/[]json_test.X-10-lxt
-BenchmarkUnmarshalType/[]json_test.X-10-lxt-12         	  394222	      3340 ns/op	    1280 B/op	       0 allocs/op
-BenchmarkUnmarshalType/[]json_test.X-10-sonic
-BenchmarkUnmarshalType/[]json_test.X-10-sonic-12       	  289731	      3650 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshalType/Marshal-[]json_test.X-10-lxt
-BenchmarkUnmarshalType/Marshal-[]json_test.X-10-lxt-12 	 1000000	      1099 ns/op	     708 B/op	       0 allocs/op
-BenchmarkUnmarshalType/Marshal-[]json_test.X-10-sonic
-BenchmarkUnmarshalType/Marshal-[]json_test.X-10-sonic-12         	  617835	      1633 ns/op	     969 B/op	       4 allocs/op
-BenchmarkUnmarshalType/[]json_test.Y-10-lxt
-BenchmarkUnmarshalType/[]json_test.Y-10-lxt-12                   	  434506	      2731 ns/op	    1139 B/op	       0 allocs/op
-BenchmarkUnmarshalType/[]json_test.Y-10-sonic
-BenchmarkUnmarshalType/[]json_test.Y-10-sonic-12                 	  349038	      3633 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-lxt
-BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-lxt-12           	 1673920	       711.9 ns/op	     585 B/op	       0 allocs/op
-BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-sonic
-BenchmarkUnmarshalType/Marshal-[]json_test.Y-10-sonic-12         	 1000000	      1008 ns/op	     842 B/op	       4 allocs/op
 */
 
 func BenchmarkUnmarshalType(b *testing.B) {
@@ -281,6 +253,7 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		}
 		all = get
 	}
+	var err error
 	for _, obj := range all {
 		builder := lxt.NewTypeBuilder()
 		buf := bytes.NewBufferString("{")
@@ -304,6 +277,8 @@ func BenchmarkUnmarshalType(b *testing.B) {
 
 		runtime.GC()
 		b.Run(fmt.Sprintf("%s-%d-lxt", fieldType, N), func(b *testing.B) {
+			b.SetBytes(int64(len(str)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				err := lxt.UnmarshalString(str, value)
 				if err != nil {
@@ -314,6 +289,8 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		// continue
 		runtime.GC()
 		b.Run(fmt.Sprintf("%s-%d-sonic", fieldType, N), func(b *testing.B) {
+			b.SetBytes(int64(len(str)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				err := sonic.UnmarshalString(str, value)
 				if err != nil {
@@ -332,7 +309,7 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		// })
 
 		// continue
-		runtime.GC()
+		// runtime.GC()
 		// b.Run(fmt.Sprintf("%s-%d-std", fieldType, N), func(b *testing.B) {
 		// 	for i := 0; i < b.N; i++ {
 		// 		err := json.Unmarshal(bs, value)
@@ -341,10 +318,11 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		// 		}
 		// 	}
 		// })
-		// runtime.GC()
 
-		var err error
+		runtime.GC()
 		b.Run(fmt.Sprintf("Marshal-%s-%d-lxt", fieldType, N), func(b *testing.B) {
+			b.SetBytes(int64(len(str)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				bs, err = lxt.Marshal(value)
 				if err != nil {
@@ -354,6 +332,8 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		})
 		runtime.GC()
 		b.Run(fmt.Sprintf("Marshal-%s-%d-sonic", fieldType, N), func(b *testing.B) {
+			b.SetBytes(int64(len(str)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				bs, err = sonic.Marshal(value)
 				if err != nil {
@@ -372,6 +352,616 @@ func BenchmarkUnmarshalType(b *testing.B) {
 		// })
 	}
 }
+
+//
+
+func BenchmarkSmallBinding(b *testing.B) {
+	bs := []byte(testdata.BookData)
+	str := string(bs)
+	d := testdata.Book{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.Book{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.Book{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.Book{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.Book{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+func BenchmarkSmallGeneric(b *testing.B) {
+	bs := []byte(testdata.BookData)
+	str := string(bs)
+	var d interface{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+func BenchmarkMediumBinding(b *testing.B) {
+	bs := []byte(testdata.TwitterJson)
+	str := string(bs)
+	d := testdata.TwitterStruct{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.TwitterStruct{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.TwitterStruct{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.TwitterStruct{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.TwitterStruct{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+func BenchmarkMediumGeneric(b *testing.B) {
+	bs := []byte(testdata.TwitterJson)
+	str := string(bs)
+	var d interface{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+func BenchmarkLargeBinding(b *testing.B) {
+	bs := []byte(testdata.TwitterJsonLarge)
+	str := string(bs)
+	d := testdata.TwitterStruct{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.TwitterStruct{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.TwitterStruct{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.TwitterStruct{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.TwitterStruct{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+func BenchmarkLargeGeneric(b *testing.B) {
+	bs := []byte(testdata.TwitterJsonLarge)
+	str := string(bs)
+	var d interface{}
+	err := lxt.Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	runtime.GC()
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = lxt.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var d interface{}
+			_ = sonic.UnmarshalString(str, &d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				var d interface{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
+
+	// encode
+
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = lxt.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = sonic.Marshal(&d)
+		}
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = lxt.Marshal(&d)
+			}
+		})
+	})
+
+	runtime.GC()
+	b.Run("encode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = sonic.Marshal(&d)
+			}
+		})
+	})
+}
+
+//
 
 func BenchmarkUnmarshalInterface(b *testing.B) {
 

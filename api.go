@@ -48,7 +48,15 @@ func UnmarshalString(bs string, in interface{}) (err error) {
 		}
 	}()
 	i := trimSpace(bs)
-
+	if mIn, ok := in.(*interface{}); ok {
+		if bs[i] != '{' {
+			err = fmt.Errorf("json must start with '{' or '[', %s", ErrStream(bs[i:]))
+			return
+		}
+		m, _, _ := parseMapInterface(-1, bs[i+1:])
+		*mIn = m
+		return nil
+	}
 	if mIn, ok := in.(*map[string]interface{}); ok {
 		if bs[i] != '{' {
 			err = fmt.Errorf("json must start with '{' or '[', %s", ErrStream(bs[i:]))
@@ -119,6 +127,10 @@ func Marshal(in interface{}) (bs []byte, err error) {
 		}
 	}()
 
+	if mIn, ok := in.(*interface{}); ok {
+		bs = marshalInterface(bs[:0], *mIn)
+		return
+	}
 	if mIn, ok := in.(*map[string]interface{}); ok {
 		bs = marshalMapInterface(bs[:0], *mIn)
 		return

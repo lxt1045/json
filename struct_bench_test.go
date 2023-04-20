@@ -407,6 +407,17 @@ func BenchmarkUnmarshalStruct(b *testing.B) {
 		},
 	}
 
+	// b.RunParallel(func(pb *testing.PB) {
+	// 	for pb.Next() {
+	// 		Unmarshal(bs, &d)
+	// 	}
+	// })
+	// b.RunParallel(func(pb *testing.PB) {
+	// 	for pb.Next() {
+	// 		sonic.UnmarshalString(str, &d)
+	// 	}
+	// })
+	// return
 	for _, r := range runs[:] {
 		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
@@ -828,9 +839,33 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		},
 	}
 
+	runtime.GC()
+	b.Run("RunParallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(data)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				UnmarshalString(data, &m)
+			}
+		})
+	})
+	runtime.GC()
+	b.Run("RunParallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(data)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				sonic.UnmarshalString(data, &m)
+			}
+		})
+	})
+
 	for _, r := range runs[:] {
 		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(data)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				r.f()
 			}
@@ -949,6 +984,9 @@ func BenchmarkUnmarshalStruct1x_medium(b *testing.B) {
 	for _, r := range runs[:] {
 		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(bs)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				r.f()
 			}
@@ -1077,6 +1115,9 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 	for _, r := range runs {
 		runtime.GC()
 		b.Run(r.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(bs)))
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				r.f()
 			}
