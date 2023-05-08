@@ -293,7 +293,7 @@ func BenchmarkMyUnmarshal2(b *testing.B) {
 	})
 }
 
-//sonic
+// sonic
 func BenchmarkMyUnmarshal3(b *testing.B) {
 	name := "Unmarshal"
 	bs := []byte(j0)
@@ -334,7 +334,6 @@ BenchmarkUnMarshalStruct/lxt-st-12              10000000               129.2 ns/
 BenchmarkUnMarshalStruct/sonic-st-12            10000000               155.8 ns/op      64166301.93 MB/s               0 B/op          0 allocs/op
 BenchmarkUnMarshalStruct/lxt-st#01-12           10000000               127.5 ns/op      78409245.03 MB/s               0 B/op          0 allocs/op
 BenchmarkUnMarshalStruct/sonic-st#01-12         10000000               148.5 ns/op      67361422.86 MB/s               0 B/op          0 allocs/op
-
 
 BenchmarkUnmarshalStruct
 BenchmarkUnmarshalStruct/lxt-st
@@ -435,7 +434,8 @@ func BenchmarkUnmarshalStruct(b *testing.B) {
 go test -benchmem -run=^$ -bench ^BenchmarkUnMarshalStructMap$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkUnMarshalStructMap$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-//   */
+//
+*/
 func BenchmarkUnMarshalStructMap(b *testing.B) {
 	bs := []byte(`{
 		"ZH_CN1":"chinesechinese",
@@ -839,26 +839,28 @@ func BenchmarkUnmarshalStruct1x_small(b *testing.B) {
 		},
 	}
 
-	runtime.GC()
-	b.Run("RunParallel-lxt", func(b *testing.B) {
-		b.SetBytes(int64(len(data)))
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				UnmarshalString(data, &m)
-			}
+	if false {
+		runtime.GC()
+		b.Run("RunParallel-lxt", func(b *testing.B) {
+			b.SetBytes(int64(len(data)))
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					UnmarshalString(data, &m)
+				}
+			})
 		})
-	})
-	runtime.GC()
-	b.Run("RunParallel-sonic", func(b *testing.B) {
-		b.SetBytes(int64(len(data)))
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				sonic.UnmarshalString(data, &m)
-			}
+		runtime.GC()
+		b.Run("RunParallel-sonic", func(b *testing.B) {
+			b.SetBytes(int64(len(data)))
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					sonic.UnmarshalString(data, &m)
+				}
+			})
 		})
-	})
+	}
 
 	for _, r := range runs[:] {
 		runtime.GC()
@@ -1129,7 +1131,8 @@ func BenchmarkUnmarshalStruct1x_large(b *testing.B) {
 go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalLarge$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalLarge$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-//   */
+//
+*/
 func BenchmarkMyUnmarshalLarge(b *testing.B) {
 	bs := []byte(testdata.TwitterJson)
 	bs = []byte(testdata.TwitterJsonLarge)
@@ -1180,7 +1183,8 @@ func BenchmarkMyUnmarshalLarge(b *testing.B) {
 go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalSmall$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkMyUnmarshalSmall$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-//   */
+//
+*/
 func BenchmarkMyUnmarshalSmall(b *testing.B) {
 	bs := []byte(testdata.BookData)
 	b.Run("small", func(b *testing.B) {
@@ -1198,7 +1202,8 @@ func BenchmarkMyUnmarshalSmall(b *testing.B) {
 go test -benchmem -run=^$ -bench ^BenchmarkMarshalMedium $ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkMarshalLarge$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-//   */
+//
+*/
 func BenchmarkMarshalLarge(b *testing.B) {
 	bs := []byte(testdata.TwitterJsonLarge)
 	d := testdata.TwitterStruct{}
