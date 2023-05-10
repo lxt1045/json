@@ -6,8 +6,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"sync"
 	"testing"
 
+	"github.com/bytedance/sonic"
+	"github.com/lxt1045/json/testdata"
 	asrt "github.com/stretchr/testify/assert"
 )
 
@@ -598,5 +601,112 @@ func TestStructST(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("%+v", string(bs))
+	})
+}
+
+func BenchmarkParallelSafety(b *testing.B) {
+	bs := []byte(testdata.BookData)
+	str := string(bs)
+	d := testdata.Book{}
+	err := Unmarshal(bs, &d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sonic.UnmarshalString(str, &d)
+
+	var wg sync.WaitGroup
+	runtime.GC()
+	for x := 0; x < 100; x++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			runtime.Gosched()
+			for i := 0; i < b.N; i++ {
+				d := testdata.Book{}
+				_ = UnmarshalString(str, &d)
+			}
+		}()
+	}
+	b.Run("decode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			d := testdata.Book{}
+			_ = UnmarshalString(str, &d)
+		}
+	})
+	wg.Wait()
+
+	for x := 0; x < 100; x++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			runtime.Gosched()
+			for i := 0; i < b.N; i++ {
+				d := testdata.Book{}
+				_ = UnmarshalString(str, &d)
+			}
+		}()
+	}
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.Book{}
+				_ = UnmarshalString(str, &d)
+			}
+		})
+
+	})
+
+	wg.Wait()
+	// encode
+
+	for x := 0; x < 100; x++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			runtime.Gosched()
+			for i := 0; i < b.N; i++ {
+				_, _ = Marshal(&d)
+			}
+		}()
+	}
+	runtime.GC()
+	b.Run("encode-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = Marshal(&d)
+		}
+	})
+
+	wg.Wait()
+
+	for x := 0; x < 100; x++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			for i := 0; i < b.N; i++ {
+				d := testdata.Book{}
+				_, _ = Marshal(&d)
+			}
+		}()
+	}
+	runtime.GC()
+	b.Run("encode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = Marshal(&d)
+			}
+		})
 	})
 }
