@@ -550,7 +550,7 @@ func int8MFuncs1(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 	return
 }
 
-//数值：十进制数，不能有前导0，可以为负数，可以有小数部分。还可以用e或者E表示指数部分。
+// 数值：十进制数，不能有前导0，可以为负数，可以有小数部分。还可以用e或者E表示指数部分。
 // 不能包含非数，如NaN。不区分整数与浮点数。JavaScript用双精度浮点数表示所有数值。
 var toNums = func() (out [128]int8) {
 	nums := map[int]int8{
@@ -1248,7 +1248,70 @@ func stringUnm(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 func stringM(store Store, in []byte) (out []byte) {
 	str := *(*string)(store.obj)
 	out = append(in, '"')
-	out = append(out, str...)
+	// strings.ReplaceAll(str, "\\", "\\\\")
+	nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
+	if nQuote == 0 {
+		out = append(out, str...) // TODO 需要转义： \ --> \\
+	} else {
+		for {
+			i := strings.IndexByte(str, '"')
+			if i == -1 {
+				out = append(out, str...)
+				break
+			}
+			out = append(out, str[:i]...)
+			out = append(out, '\\', '"')
+			str = str[i+1:]
+		}
+	}
+	/*
+		nSlash := strings.Count(str, "\\")
+		nQuote := strings.Count(str, "\"")
+		if nSlash == 0 {
+			if nQuote == 0 {
+				out = append(out, str...) // TODO 需要转义： \ --> \\
+			} else {
+				for {
+					i := strings.IndexByte(str, '"')
+					if i == -1 {
+						out = append(out, str...)
+						break
+					}
+					out = append(out, str[:i]...)
+					out = append(out, '\\', '"')
+					str = str[i+1:]
+				}
+			}
+		} else if nQuote == 0 {
+			for {
+				i := strings.IndexByte(str, '\\')
+				if i == -1 {
+					out = append(out, str...)
+					break
+				}
+				out = append(out, str[:i]...)
+				out = append(out, '\\', '\\')
+				str = str[i+1:]
+			}
+		} else {
+			iSlash, iQuote := strings.IndexByte(str, '\\'), strings.IndexByte(str, '"')
+			for iSlash == -1 && iQuote == -1 {
+				if iSlash==
+				if iSlash < iQuote {
+
+				}
+
+				i := strings.IndexByte(str, '\\')
+				if i == -1 {
+					out = append(out, str...)
+					break
+				}
+				out = append(out, str[:i]...)
+				out = append(out, '\\', '\\')
+				str = str[i+1:]
+			}
+		}
+	*/
 	out = append(out, '"')
 	return
 }

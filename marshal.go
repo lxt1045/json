@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	lxterrs "github.com/lxt1045/errors"
 )
@@ -37,7 +38,7 @@ import (
     golang不支持尾递归，可能嵌套调用性能没有fget list 方式好
 */
 
-//bsGrow 在 slice marshal 的时候可以根据第一个的序列化结果计算出还需要的长度，如果 bs 不足则提前分配是比较好的选择
+// bsGrow 在 slice marshal 的时候可以根据第一个的序列化结果计算出还需要的长度，如果 bs 不足则提前分配是比较好的选择
 func bsGrow(in []byte, lNeed int) (out []byte) {
 	lNew := bsPoolN
 	if lNew < lNeed+len(in) {
@@ -64,7 +65,7 @@ func marshalStruct(store Store, in []byte) (out []byte) {
 	return
 }
 
-//marshalT 序列化明确的类型
+// marshalT 序列化明确的类型
 func marshalT(in []byte, store Store) (out []byte) {
 	out = in
 	panic(lxterrs.Errorf("error tag, fM is nil:%+v", store.tag))
@@ -292,7 +293,23 @@ func marshalValue(bs []byte, value reflect.Value) (out []byte) {
 			return
 		}
 		out = append(out, '"')
-		out = append(out, value.String()...)
+		// out = append(out, value.String()...) // TODO 需要转义： \ --> \\
+		str := value.String()
+		nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
+		if nQuote == 0 {
+			out = append(out, str...) // TODO 需要转义： \ --> \\
+		} else {
+			for {
+				i := strings.IndexByte(str, '"')
+				if i == -1 {
+					out = append(out, str...)
+					break
+				}
+				out = append(out, str[:i]...)
+				out = append(out, '\\', '"')
+				str = str[i+1:]
+			}
+		}
 		out = append(out, '"')
 		return
 	default:
@@ -310,7 +327,23 @@ func marshalKey(in []byte, k reflect.Value) (out []byte) {
 	if k.Kind() == reflect.String {
 		// key = k.String()
 		out = append(out, '"')
-		out = append(out, k.String()...)
+		// out = append(out, k.String()...) // TODO 需要转义： \ --> \\
+		str := k.String()
+		nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
+		if nQuote == 0 {
+			out = append(out, str...) // TODO 需要转义： \ --> \\
+		} else {
+			for {
+				i := strings.IndexByte(str, '"')
+				if i == -1 {
+					out = append(out, str...)
+					break
+				}
+				out = append(out, str[:i]...)
+				out = append(out, '\\', '"')
+				str = str[i+1:]
+			}
+		}
 		out = append(out, '"')
 		return
 	}

@@ -62,7 +62,7 @@ Showing top 10 nodes out of 116
 ```
 5.3
 ```sh
-list func_name # 查看函数内每行代码开销
+list func_name # 查看函数内每行代码开销; 注意 '(' 、')'、'*' 需要转义
 ```
 输出例子：
 ```sh
@@ -123,4 +123,111 @@ RCU
 
 ## 字符串搜索
 
-## 
+## 附
+1. net/http/pprof：基于 HTTP Server 运行，并且可以采集运行时数据进行分析。
+
+1.1 在main package 中加入以下代码：
+```go
+//main.go
+import (
+	"net/http"
+	_ "net/http/pprof"
+)
+func main() {
+	go func() {
+		runtime.SetBlockProfileRate(1)     // 开启对阻塞操作的跟踪，block
+		runtime.SetMutexProfileFraction(1) // 开启对锁调用的跟踪，mutex
+
+		err := http.ListenAndServe(":6060", nil)
+		stdlog.Fatal(err)
+	}()
+}
+```
+就可以通过 http://127.0.0.1:6060/debug/pprof/ url访问相关信息：
+```sh
+/debug/pprof/
+Set debug=1 as a query parameter to export in legacy text format
+
+
+Types of profiles available:
+Count	Profile
+3	allocs
+2	block
+0	cmdline
+10	goroutine
+3	heap
+0	mutex
+0	profile
+10	threadcreate
+0	trace
+full goroutine stack dump
+Profile Descriptions:
+
+allocs: A sampling of all past memory allocations
+block: Stack traces that led to blocking on synchronization primitives
+cmdline: The command line invocation of the current program
+goroutine: Stack traces of all current goroutines. Use debug=2 as a query parameter to export in the same format as an unrecovered panic.
+heap: A sampling of memory allocations of live objects. You can specify the gc GET parameter to run GC before taking the heap sample.
+mutex: Stack traces of holders of contended mutexes
+profile: CPU profile. You can specify the duration in the seconds GET parameter. After you get the profile file, use the go tool pprof command to investigate the profile.
+threadcreate: Stack traces that led to the creation of new OS threads
+trace: A trace of execution of the current program. You can specify the duration in the seconds GET parameter. After you get the trace file, use the go tool trace command to investigate the trace.
+```
+
+通过以下命令可以获取相关的pprof文件：
+```sh
+# CPU
+curl -o cpu.out http://127.0.0.1:6060/debug/pprof/profile?seconds=20
+# memery
+curl -o cpu.out http://127.0.0.1:6060/debug/pprof/allocs?seconds=30
+# 
+curl -o cpu.out http://127.0.0.1:6060/debug/pprof/mutex?seconds=15
+# 
+curl -o cpu.out http://127.0.0.1:6060/debug/pprof/block?seconds=15
+```
+
+其中 net/http/pprof 使用 runtime/pprof 包来进行封装，并在 http 端口上暴露出来。runtime/pprof 可以用来产生 dump 文件，再使用 Go Tool PProf 来分析这运行日志。
+
+如果应用使用了自定义的 Mux，则需要手动注册一些路由规则：
+```go
+r.HandleFunc("/debug/pprof/", pprof.Index)
+r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+```
+```go
+func RouteRegister(rg *gin.RouterGroup, prefixOptions ...string) {
+   prefix := getPrefix(prefixOptions...)
+
+   prefixRouter := rg.Group(prefix)
+   {
+      prefixRouter.GET("/", pprofHandler(pprof.Index))
+      prefixRouter.GET("/cmdline", pprofHandler(pprof.Cmdline))
+      prefixRouter.GET("/profile", pprofHandler(pprof.Profile))
+      prefixRouter.POST("/symbol", pprofHandler(pprof.Symbol))
+      prefixRouter.GET("/symbol", pprofHandler(pprof.Symbol))
+      prefixRouter.GET("/trace", pprofHandler(pprof.Trace))
+      prefixRouter.GET("/allocs", pprofHandler(pprof.Handler("allocs").ServeHTTP))
+      prefixRouter.GET("/block", pprofHandler(pprof.Handler("block").ServeHTTP))
+      prefixRouter.GET("/goroutine", pprofHandler(pprof.Handler("goroutine").ServeHTTP))
+      prefixRouter.GET("/heap", pprofHandler(pprof.Handler("heap").ServeHTTP))
+      prefixRouter.GET("/mutex", pprofHandler(pprof.Handler("mutex").ServeHTTP))
+      prefixRouter.GET("/threadcreate", pprofHandler(pprof.Handler("threadcreate").ServeHTTP))
+   }
+}
+```
+
+其它的数据的分析和CPU、Memory基本一致。下面列一下所有的数据类型：
+
+http://localhost:8082/debug/pprof/ ：获取概况信息，即图一的信息
+http://localhost:8082/debug/pprof/allocs : 分析内存分配
+http://localhost:8082/debug/pprof/block : 分析堆栈跟踪导致阻塞的同步原语
+http://localhost:8082/debug/pprof/cmdline : 分析命令行调用的程序，web下调用报错
+http://localhost:8082/debug/pprof/goroutine : 分析当前 goroutine 的堆栈信息
+http://localhost:8082/debug/pprof/heap : 分析当前活动对象内存分配
+http://localhost:8082/debug/pprof/mutex : 分析堆栈跟踪竞争状态互斥锁的持有者
+http://localhost:8082/debug/pprof/profile : 分析一定持续时间内CPU的使用情况
+http://localhost:8082/debug/pprof/threadcreate : 分析堆栈跟踪系统新线程的创建
+http://localhost:8082/debug/pprof/trace : 分析追踪当前程序的执行状况
+

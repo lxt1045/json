@@ -32,7 +32,7 @@ import (
 	lxterrs "github.com/lxt1045/errors"
 )
 
-//TagInfo 拥有tag的struct的成员的解析结果
+// TagInfo 拥有tag的struct的成员的解析结果
 type TagInfo struct {
 	// 常用的放前面，在缓存的概率大
 	TagName    string //
@@ -76,7 +76,7 @@ func (t *TagInfo) GetChildFromMap(key string) *TagInfo {
 	return t.Children[string(key)]
 }
 
-//AddChild 添加下级子节点
+// AddChild 添加下级子节点
 func (t *TagInfo) AddChild(c *TagInfo) (err error) {
 	if len(t.Children) == 0 {
 		t.Children = make(map[string]*TagInfo)
@@ -351,22 +351,22 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 				// TODO: 针对循环类型
 				// fUnm 和 fM 里重新创建缓存和对象，再获取 tag 继续往下执行
 				store := PoolStore{
-						tag:         tag,
-						obj:         prv.ptr, // eface.Value,
-						pointerPool: tag.ptrCache.Get(),
-					}
-					//slice 才需要的缓存
-					if tag.slicePool.New != nil {
-						store.slicePool = tag.slicePool.Get().(unsafe.Pointer)
-						store.dynPool = dynPool.Get().(*dynamicPool)
+					tag:         tag,
+					obj:         prv.ptr, // eface.Value,
+					pointerPool: tag.ptrCache.Get(),
+				}
+				//slice 才需要的缓存
+				if tag.slicePool.New != nil {
+					store.slicePool = tag.slicePool.Get().(unsafe.Pointer)
+					store.dynPool = dynPool.Get().(*dynamicPool)
 
-						err = parseRoot(bs[i:], store)
+					err = parseRoot(bs[i:], store)
 
-						tag.slicePool.Put(store.slicePool)
-						dynPool.Put(store.dynPool)
-					} else {
-						err = parseRoot(bs[i:], store)
-					}
+					tag.slicePool.Put(store.slicePool)
+					dynPool.Put(store.dynPool)
+				} else {
+					err = parseRoot(bs[i:], store)
+				}
 			*/
 		}
 	}
