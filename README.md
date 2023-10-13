@@ -204,7 +204,7 @@ BenchmarkUnmarshalType/Marshal-*string-10-lxt-12                 	 7093699	     
 BenchmarkUnmarshalType/Marshal-*string-10-sonic
 BenchmarkUnmarshalType/Marshal-*string-10-sonic-12               	 2692192	       404.9 ns/op	 545.84 MB/s	     294 B/op	       4 allocs/op
 ```
-由测试结果可知，针对不同 struct 成员类型，在性能上此 JSON 库你笨都比 [sonic](https://github.com/bytedance/sonic) 要好不少。
+由测试结果可知，针对不同 struct 成员类型，在性能上此 JSON 库基本都比 [sonic](https://github.com/bytedance/sonic) 要好不少。
 
 # 3. 持续优化
 生命不息,折腾不止，作者将继续折腾。
