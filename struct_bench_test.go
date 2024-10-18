@@ -570,7 +570,7 @@ func BenchmarkUnmarshalStruct1x(b *testing.B) {
 	})
 	// return
 	runtime.GC()
-	b.Run("lxt-Unmarshal", func(b *testing.B) {
+	b.Run("sonic-Unmarshal", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			err := sonic.UnmarshalString(data, &m)
 			if err != nil {

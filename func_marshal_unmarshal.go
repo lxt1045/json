@@ -1247,21 +1247,45 @@ func stringUnm(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
 }
 func stringM(store Store, in []byte) (out []byte) {
 	str := *(*string)(store.obj)
+	return stringMm(str, in)
+}
+func stringMm(str string, in []byte) (out []byte) {
 	out = append(in, '"')
 	// strings.ReplaceAll(str, "\\", "\\\\")
-	nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
-	if nQuote == 0 {
+	// nSlash := strings.Count(str, "\\")
+	i := strings.IndexByte(str, '\\') // 只处理 " , \ 可以不处理
+	if i == -1 {
+	} else {
+		bs := []byte{}
+		for {
+			bs = append(bs, str[:i]...)
+			bs = append(bs, '\\', '\\')
+			str = str[i+1:]
+			i = strings.IndexByte(str, '\\')
+			if i == -1 {
+				bs = append(bs, str...)
+				break
+			}
+		}
+		if len(bs) > 0 {
+			str = bytesString(bs)
+		}
+	}
+
+	// nQuote := strings.Count(str, "\"")
+	i = strings.IndexByte(str, '"') // 只处理 " , \ 可以不处理
+	if i == -1 {
 		out = append(out, str...) // TODO 需要转义： \ --> \\
 	} else {
 		for {
-			i := strings.IndexByte(str, '"')
+			out = append(out, str[:i]...)
+			out = append(out, '\\', '"')
+			str = str[i+1:]
+			i = strings.IndexByte(str, '"')
 			if i == -1 {
 				out = append(out, str...)
 				break
 			}
-			out = append(out, str[:i]...)
-			out = append(out, '\\', '"')
-			str = str[i+1:]
 		}
 	}
 	/*

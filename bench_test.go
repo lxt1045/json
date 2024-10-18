@@ -17,6 +17,34 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+func BugLargeBinding11() (err error) {
+	bs := []byte(testdata.TwitterJsonLarge)
+	// str := string(bs)
+	d := testdata.TwitterStruct{}
+	err = lxt.Unmarshal(bs, &d)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func TestLargeBinding11(t *testing.T) {
+	for i := 0; i < 30; i++ {
+		err := BugLargeBinding11()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	// runtime.GC()
+}
+
+func BenchmarkLargeBinding11(b *testing.B) {
+	err := BugLargeBinding11()
+	if err != nil {
+		b.Fatal(err)
+	}
+}
+
 func BenchmarkIndexByte(b *testing.B) {
 	b.Run("IndexByte", func(b *testing.B) {
 		b.ReportAllocs()
@@ -190,12 +218,12 @@ func BenchmarkMmarshal(b *testing.B) {
 	}
 }
 
-//BytesToString ...
+// BytesToString ...
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-//StringToBytes ...
+// StringToBytes ...
 func StringToBytes(s string) []byte {
 	strH := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	p := reflect.SliceHeader{
@@ -204,6 +232,7 @@ func StringToBytes(s string) []byte {
 		Cap:  strH.Len,
 	}
 	return *(*[]byte)(unsafe.Pointer(&p))
+	// return unsafe.Slice(unsafe.StringData(s), len(s))   // go 1.20
 }
 
 /*
@@ -1181,7 +1210,6 @@ func BenchmarkStrings(b *testing.B) {
 }
 
 /*
-
 BenchmarkObj/lxt-obj
 BenchmarkObj/lxt-obj-12         	  394314	      3049 ns/op	129330.79 MB/s	    1286 B/op	       0 allocs/op
 BenchmarkObj/sonic-obj

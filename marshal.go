@@ -53,8 +53,9 @@ func bsGrow(in []byte, lNeed int) (out []byte) {
 func marshalStruct(store Store, in []byte) (out []byte) {
 	out = append(in, '{')
 	for _, tag := range store.tag.ChildList {
+		out = append(out, '"')
 		out = append(out, tag.TagName...)
-		out = append(out, ':')
+		out = append(out, '"', ':')
 
 		pObj := pointerOffset(store.obj, tag.Offset)
 		out = tag.fM(Store{obj: pObj, tag: tag}, out)
@@ -131,9 +132,10 @@ func marshalInterface(bs []byte, iface interface{}) (out []byte) {
 	case float64:
 		out = strconv.AppendFloat(out, v, 'f', -1, 64)
 	case string:
-		out = append(out, '"')
-		out = append(out, v...)
-		out = append(out, '"')
+		// out = append(out, '"')
+		// out = append(out, v...) //
+		// out = append(out, '"')
+		out = stringMm(v, out)
 	case stdjson.Number:
 		// TODO: 检查 numStr 的有效性？
 		out = append(out, v.String()...)
@@ -292,25 +294,44 @@ func marshalValue(bs []byte, value reflect.Value) (out []byte) {
 			out = append(out, numStr...)
 			return
 		}
-		out = append(out, '"')
-		// out = append(out, value.String()...) // TODO 需要转义： \ --> \\
+		// out = append(out, '"')
+		// out = append(out, value.String()...)
 		str := value.String()
-		nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
-		if nQuote == 0 {
-			out = append(out, str...) // TODO 需要转义： \ --> \\
-		} else {
-			for {
-				i := strings.IndexByte(str, '"')
-				if i == -1 {
-					out = append(out, str...)
-					break
-				}
-				out = append(out, str[:i]...)
-				out = append(out, '\\', '"')
-				str = str[i+1:]
-			}
-		}
-		out = append(out, '"')
+		out = stringMm(str, out)
+		// nSlash := strings.Count(str, "\\") // 只处理 " , \ 可以不处理
+		// if nSlash == 0 {
+		// } else {
+		// 	bs := []byte{}
+		// 	for {
+		// 		i := strings.IndexByte(str, '\\')
+		// 		if i == -1 {
+		// 			bs = append(bs, str...)
+		// 			break
+		// 		}
+		// 		bs = append(bs, str[:i+1]...)
+		// 		bs = append(bs, '\\')
+		// 		str = str[i+1:]
+		// 	}
+		// 	if len(bs) > 0 {
+		// 		str = bytesString(bs)
+		// 	}
+		// }
+		// nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
+		// if nQuote == 0 {
+		// 	out = append(out, str...) // TODO 需要转义： \ --> \\
+		// } else {
+		// 	for {
+		// 		i := strings.IndexByte(str, '"')
+		// 		if i == -1 {
+		// 			out = append(out, str...)
+		// 			break
+		// 		}
+		// 		out = append(out, str[:i]...)
+		// 		out = append(out, '\\', '"')
+		// 		str = str[i+1:]
+		// 	}
+		// }
+		// out = append(out, '"')
 		return
 	default:
 		// out = append(out, "null"...)

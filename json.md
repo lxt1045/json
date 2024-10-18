@@ -220,14 +220,14 @@ func RouteRegister(rg *gin.RouterGroup, prefixOptions ...string) {
 
 其它的数据的分析和CPU、Memory基本一致。下面列一下所有的数据类型：
 
-http://localhost:8082/debug/pprof/ ：获取概况信息，即图一的信息
-http://localhost:8082/debug/pprof/allocs : 分析内存分配
-http://localhost:8082/debug/pprof/block : 分析堆栈跟踪导致阻塞的同步原语
-http://localhost:8082/debug/pprof/cmdline : 分析命令行调用的程序，web下调用报错
-http://localhost:8082/debug/pprof/goroutine : 分析当前 goroutine 的堆栈信息
-http://localhost:8082/debug/pprof/heap : 分析当前活动对象内存分配
-http://localhost:8082/debug/pprof/mutex : 分析堆栈跟踪竞争状态互斥锁的持有者
-http://localhost:8082/debug/pprof/profile : 分析一定持续时间内CPU的使用情况
-http://localhost:8082/debug/pprof/threadcreate : 分析堆栈跟踪系统新线程的创建
-http://localhost:8082/debug/pprof/trace : 分析追踪当前程序的执行状况
+http://localhost:6060/debug/pprof/ ：获取概况信息，即图一的信息
+http://localhost:6060/debug/pprof/allocs : 分析内存分配
+http://localhost:6060/debug/pprof/block : 分析堆栈跟踪导致阻塞的同步原语
+http://localhost:6060/debug/pprof/cmdline : 分析命令行调用的程序，web下调用报错
+http://localhost:6060/debug/pprof/goroutine : 分析当前 goroutine 的堆栈信息
+http://localhost:6060/debug/pprof/heap : 分析当前活动对象内存分配
+http://localhost:6060/debug/pprof/mutex : 分析堆栈跟踪竞争状态互斥锁的持有者
+http://localhost:6060/debug/pprof/profile : 分析一定持续时间内CPU的使用情况
+http://localhost:6060/debug/pprof/threadcreate : 分析堆栈跟踪系统新线程的创建
+http://localhost:6060/debug/pprof/trace : 分析追踪当前程序的执行状况
 

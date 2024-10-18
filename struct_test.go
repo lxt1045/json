@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/bytedance/sonic"
 	"github.com/lxt1045/json/testdata"
-	asrt "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStruct(t *testing.T) {
@@ -242,10 +243,10 @@ func TestStruct(t *testing.T) {
 				var mm map[string]interface{}
 				json.Unmarshal([]byte(d.target), &mm)
 				for k, v := range *m {
-					asrt.Equalf(t, mm[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
+					assert.Equalf(t, mm[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
 				}
 				for k, v := range mm {
-					asrt.Equalf(t, (*m)[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
+					assert.Equalf(t, (*m)[k], v, fmt.Sprintf("i:%d,%s", i, d.name))
 				}
 
 				t.Logf("\n%s\n%s", string(d.target), string(bs))
@@ -254,7 +255,7 @@ func TestStruct(t *testing.T) {
 				t.Logf("\n%s\n%s", string(d.target), string(bs))
 				// asrt.EqualValuesf(t, d.target, string(bs), d.name)
 			} else {
-				asrt.Equalf(t, d.target, string(bs), fmt.Sprintf("i:%d,%s", i, d.name))
+				assert.Equalf(t, d.target, string(bs), fmt.Sprintf("i:%d,%s", i, d.name))
 			}
 
 			runtime.GC()
@@ -280,6 +281,16 @@ func TestStructMarshalInterface(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("json:%s", string(bs))
+}
+
+func Test_stringM(t *testing.T) {
+	str := `qqqq\"`
+	store := Store{
+		obj: unsafe.Pointer(&str),
+	}
+	bs := stringM(store, nil)
+	t.Logf("%s:%s", str, string(bs))
+	assert.Equalf(t, `"qqqq\\\""`, string(bs), "err")
 }
 
 func TestStructMarshal(t *testing.T) {
@@ -314,7 +325,7 @@ func TestStructMarshal(t *testing.T) {
 			name:    "interface:" + fLine(),
 			bs:      `{"out":88,"struct_0":{"a":"<a href=\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\" rel=\"\\\"nofollow\\\"\">Twitter for Mac</a>"}}`,
 			target:  `{"out":88,"struct_0":{"a":"\u003ca href=\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\" rel=\"\\\"nofollow\\\"\"\u003eTwitter for Mac\u003c/a\u003e"}}`,
-			target2: `{"out":88,"struct_0":{"a":"<a href="//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22" rel="\"nofollow\"">Twitter for Mac</a>"}}`,
+			target2: `{"out":88,"struct_0":{"a":"<a href=\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\" rel=\"\\\"nofollow\\\"\">Twitter for Mac</a>"}}`,
 			data: &struct {
 				Out    int         `json:"out"`
 				Struct interface{} `json:"struct_0"`
@@ -324,7 +335,7 @@ func TestStructMarshal(t *testing.T) {
 			name:    "interface:" + fLine(),
 			bs:      `{"out":"<a href=\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\" rel=\"\\\"nofollow\\\"\">Twitter for Mac</a>"}`,
 			target:  "{\"out\":\"\\u003ca href=\\\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\\\" rel=\\\"\\\\\\\"nofollow\\\\\\\"\\\"\\u003eTwitter for Mac\\u003c/a\\u003e\"}",
-			target2: `{"out":"<a href="//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22" rel="\"nofollow\"">Twitter for Mac</a>"}`,
+			target2: `{"out":"<a href=\"//itunes.apple.com/us/app/twitter/id409789998?mt=12%5C%22\" rel=\"\\\"nofollow\\\"\">Twitter for Mac</a>"}`,
 			data: &struct {
 				Out string `json:"out"`
 			}{},
@@ -501,7 +512,7 @@ func TestStructMarshal(t *testing.T) {
 				t.Logf("\n%s\n%s", string(d.target), string(bs))
 				// asrt.EqualValuesf(t, d.target, string(bs), d.name)
 			} else {
-				asrt.Equalf(t, d.target, string(bs), fmt.Sprintf("i:%d,%s", i, d.name))
+				assert.Equalf(t, d.target, string(bs), fmt.Sprintf("i:%d,%s", i, d.name))
 			}
 
 			runtime.GC()
@@ -522,7 +533,7 @@ func TestStructMarshal(t *testing.T) {
 				if target == "" {
 					target = d.target
 				}
-				asrt.Equalf(t, target, string(bsOut), fmt.Sprintf("i:%d,%s", i, d.name))
+				assert.Equalf(t, target, string(bsOut), fmt.Sprintf("i:%d,%s", i, d.name))
 			}
 
 		})
