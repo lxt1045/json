@@ -154,7 +154,7 @@ func LoadTagNodeSlow(typ reflect.Type, hash uint32) (*TagInfo, error) {
 	return ti, nil
 }
 
-//RCU 依据 Read Copy Update 原理实现
+// RCU 依据 Read Copy Update 原理实现
 type RCU[T uintptr | uint32 | string | int, V any] struct {
 	m unsafe.Pointer
 }
@@ -217,8 +217,8 @@ func (c *RCU[T, V]) GetOrSet(key T, load func() (v V)) (v V) {
 }
 
 /*
-  Pool 和 store.Pool 一起，一次 Unmashal 调用，补充一次 pool 填满，此次执行期间，不会其他进程争抢；
-  结束后再归还，剩下的下次还可以继续使用
+Pool 和 store.Pool 一起，一次 Unmashal 调用，补充一次 pool 填满，此次执行期间，不会其他进程争抢；
+结束后再归还，剩下的下次还可以继续使用
 */
 type sliceNode[T any] struct {
 	s   []T
@@ -359,7 +359,7 @@ type sliceObj struct {
 	end uint32 // atomic
 }
 
-//BatchObj 通过批量创建的方式减少单个创建平均延时
+// BatchObj 通过批量创建的方式减少单个创建平均延时
 type BatchObj struct {
 	pool   unsafe.Pointer // *sliceObj[T]
 	backup *sliceObj

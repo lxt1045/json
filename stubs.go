@@ -23,9 +23,17 @@
 package json
 
 import (
+	"reflect"
 	"unsafe"
 )
 
+//go:linkname unsafe_NewArray reflect.unsafe_NewArray
+func unsafe_NewArray(typ *GoType, n int) unsafe.Pointer
+
+//go:linkname makemap runtime.makemap
+func makemap(t *GoType, hint int, m unsafe.Pointer) unsafe.Pointer
+
+/*
 //go:linkname strhash runtime.strhash
 func strhash(p unsafe.Pointer, h uintptr) uintptr
 
@@ -40,9 +48,6 @@ func reflect_typedmemmove(typ *GoType, dst, src unsafe.Pointer)
 
 //go:linkname unsafe_New reflect.unsafe_New
 func unsafe_New(*GoType) unsafe.Pointer
-
-//go:linkname unsafe_NewArray reflect.unsafe_NewArray
-func unsafe_NewArray(typ *GoType, n int) unsafe.Pointer
 
 //go:linkname reflect_ifaceE2I runtime.reflect_ifaceE2I
 func reflect_ifaceE2I(inter *interfacetype, e GoEface, dst *GoIface)
@@ -68,6 +73,7 @@ func memclrHasPointers(ptr unsafe.Pointer, n uintptr)
 //go:linkname makeBucketArray runtime.makeBucketArray
 func makeBucketArray(t *maptype, b uint8, dirtyalloc unsafe.Pointer) (buckets unsafe.Pointer, nextOverflow *bmap)
 
+//*/
 /*
 func makemap(t *GoType, hint int, h *hmap) *hmap {
 	if h == nil {
@@ -157,50 +163,12 @@ type mapextra struct {
 
 // 通过 pool 集中分配大内存，再切分给 map 使用，边多次神池 map 内存
 func makeMapEface(hint int) (m map[string]interface{}) {
-	if hint > 18 {
-		m = make(map[string]interface{}, hint)
-	} else {
-		// m = make(map[string]interface{})
-		h := imapPool.Get()
-		h.hash0 = hmapimp.hash0
-		m = *(*map[string]interface{})(unsafe.Pointer(&h))
-		B := uint8(0)
-		for overLoadFactor(hint, B) {
-			B++
-		}
-		h.B = B
-		base := bucketShift(B)
-		nbuckets := base
-		if B >= 4 {
-			nbuckets += bucketShift(B - 4)
-			sz := mapGoType.bucket.Size * nbuckets
-			up := roundupsize(sz)
-			if up != sz {
-				nbuckets = up / mapGoType.bucket.Size
-			}
-		}
-		bs := poolMapArrayInterface.Get().(*[]byte)
-		l := nbuckets * mapGoType.bucket.Size
-		if len(*bs) < int(l) {
-			bs = poolMapArrayInterface.New().(*[]byte)
-		}
-		h.buckets = unsafe.Pointer(&(*bs)[0])
-		if len(*bs) > int(l) {
-			*bs = (*bs)[l:]
-			poolMapArrayInterface.Put(bs)
-		}
+	return make(map[string]interface{}, hint)
+}
 
-		var nextOverflow *bmap
-		// h.buckets, nextOverflow = makeBucketArray(mapGoType, h.B, h.buckets)
-		if base != nbuckets {
-			nextOverflow = (*bmap)(pointerOffset(h.buckets, base*uintptr(mapGoType.bucketsize)))
-			last := (*bmap)(pointerOffset(h.buckets, (nbuckets-1)*uintptr(mapGoType.bucketsize)))
-			last.setoverflow(mapGoType, (*bmap)(h.buckets))
-		}
-		if nextOverflow != nil {
-			h.extra = new(mapextra)
-			h.extra.nextOverflow = nextOverflow
-		}
-	}
-	return
+// 抄: 新的swiss map
+func makeSwissMapEface(hint int) (m map[string]any) {
+	mTyp := reflect.TypeOf(m)
+	mm := makemap(UnpackType(mTyp), hint, *(*unsafe.Pointer)(unsafe.Pointer(&m)))
+	return *(*map[string]any)(unsafe.Pointer(&mm))
 }

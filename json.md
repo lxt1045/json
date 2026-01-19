@@ -1,9 +1,11 @@
 # 目标是性能最好的 Go JSON 库
 
-
 # 1. 常用的性能判断方法
+
 由于笔者能力有限，这里并不会晚上的介绍所有优化方法，仅根据自己经验简单介绍 Go 下的优化工具的一种使用方式，其他使用方式需要读者自己探索。
+
 ## 1.1 pprof 工具使用：
+
 参考文档:\
 [golang 性能优化分析工具 pprof (上) - 基础使用介绍](https://www.cnblogs.com/jiujuan/p/14588185.html)\
 [《Go 语言编程之旅》6.1 Go 大杀器之性能剖析 PProf（上）](https://golang2.eddycjy.com/posts/ch6/01-pprof-1/)
@@ -14,7 +16,9 @@ net/http/pprof：基于 HTTP Server 运行，并且可以采集运行时数据�
 go test：通过运行测试用例，并指定所需标识来进行采集。
 
 这里仅介绍 go test 方式，分为这几个步骤：\
+
 1. 这种方式需要先创建一个测试函数，最好是 Benchmark 类型。
+
 ```go
 func Benchmark_Sample(b *testing.B) {
     for i := 0; i < b.N; i++ {
@@ -22,28 +26,40 @@ func Benchmark_Sample(b *testing.B) {
     }
 }
 ```
+
 2. 执行测试，生成 cpu.prof 测试文档
+
 ```sh
 go test -benchmem -run=^$ -bench ^Benchmark_Sample$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof
 ```
+
 3. 执行编译命令生成二进制
+
 ```sh
-go test -benchmem -run=^$ -bench ^Benchmark_Sample$ github.com/lxt1045/json -c -o test.bin 
+go test -benchmem -run=^$ -bench ^Benchmark_Sample$ github.com/lxt1045/json -c -o test.bin
 ```
+
 4. 使用 go tool 命令解析 cpu.prof 测试文档
+
 ```sh
 go tool pprof ./test.bin cpu.prof
 ```
+
 5. 使用以下命令查看:\
-5.1
+   5.1
+
 ```sh
 web # 查看 graph 图
 ```
+
 5.2
+
 ```sh
 top n # 查看占用排行
 ```
+
 输出例子：
+
 ```
 Showing nodes accounting for 9270ms, 67.91% of 13650ms total
 Dropped 172 nodes (cum <= 68.25ms)
@@ -60,11 +76,15 @@ Showing top 10 nodes out of 116
      300ms  2.20% 65.93%      300ms  2.20%  runtime.memmove
      270ms  1.98% 67.91%      270ms  1.98%  runtime.kevent
 ```
+
 5.3
+
 ```sh
 list func_name # 查看函数内每行代码开销; 注意 '(' 、')'、'*' 需要转义
 ```
+
 输出例子：
+
 ```sh
 Total: 13.65s
 ROUTINE ======================== github.com/lxt1045/json.(*tireTree).Get in /Users/bytedance/go/src/github.com/lxt1045/json/tire_tree.go
@@ -96,22 +116,28 @@ ROUTINE ======================== github.com/lxt1045/json.(*tireTree).Get in /Use
          .          .    306:   }
          .          .    307:
 ```
-5.4 
+
+5.4
+
 ```sh
 go tool pprof -http=:8080 cpu.prof # 通过浏览器查看测试结果
 ```
+
 执行后，通过浏览器打开 http://localhost:8080/ 链接就可以查看了。
 
 # 2. json 库的特点和针对应的优化方案
+
 3. lxt1045/json 的优化方案
-3.1 
-3.2 
+   3.1
+   3.2
 
 我们知道 golang 的反射性能
 
 采用了哪些优化方案
-##  1. 反射
-我们知道golang 的反射性能是比较差的，只要是因为反射的时候需要生成一个逃逸的对象。
+
+## 1. 反射
+
+我们知道 golang 的反射性能是比较差的，只要是因为反射的时候需要生成一个逃逸的对象。
 
 但是，因为生成新对象的时候，需要配合 GC 做内存标注，所以必须使用
 
@@ -124,9 +150,11 @@ RCU
 ## 字符串搜索
 
 ## 附
+
 1. net/http/pprof：基于 HTTP Server 运行，并且可以采集运行时数据进行分析。
 
-1.1 在main package 中加入以下代码：
+1.1 在 main package 中加入以下代码：
+
 ```go
 //main.go
 import (
@@ -143,7 +171,9 @@ func main() {
 	}()
 }
 ```
-就可以通过 http://127.0.0.1:6060/debug/pprof/ url访问相关信息：
+
+就可以通过 http://127.0.0.1:6060/debug/pprof/ url 访问相关信息：
+
 ```sh
 /debug/pprof/
 Set debug=1 as a query parameter to export in legacy text format
@@ -174,21 +204,39 @@ threadcreate: Stack traces that led to the creation of new OS threads
 trace: A trace of execution of the current program. You can specify the duration in the seconds GET parameter. After you get the trace file, use the go tool trace command to investigate the trace.
 ```
 
-通过以下命令可以获取相关的pprof文件：
+通过以下命令可以获取相关的 pprof 文件：
+
 ```sh
 # CPU
-curl -o cpu.out http://127.0.0.1:6060/debug/pprof/profile?seconds=20
+curl -o cpu.prof http://127.0.0.1:6060/debug/pprof/profile?seconds=20
+curl -o cpu.prof http://172.30.30.37:16060/debug/pprof/profile?seconds=20
+go tool pprof -http=:8080 cpu.prof
+go tool pprof -http=:8080 cpu.out
 # memery
-curl -o cpu.out http://127.0.0.1:6060/debug/pprof/allocs?seconds=30
-# 
-curl -o cpu.out http://127.0.0.1:6060/debug/pprof/mutex?seconds=15
-# 
-curl -o cpu.out http://127.0.0.1:6060/debug/pprof/block?seconds=15
+curl -o cpu.prof http://127.0.0.1:6060/debug/pprof/allocs?seconds=30
+#
+curl -o cpu.prof http://127.0.0.1:6060/debug/pprof/mutex?seconds=15
+#
+curl -o cpu.prof http://127.0.0.1:6060/debug/pprof/block?seconds=15
+
+curl -o goroutine.prof  http://172.30.30.32:6060/debug/pprof/goroutine
+curl -o goroutine.prof  http://172.30.30.32:6060/debug/pprof/allocs?seconds=30
+curl -o goroutine.prof  http://172.30.30.32:6060/debug/pprof/heap?seconds=30
+go tool pprof -http=:8080 .\goroutine.prof
+
+
+
+curl -o mem.prof http://10.216.13.118:6060/debug/pprof/allocs?seconds=120
+go tool pprof -http=:18080 mem.prof
+
+curl -o mem_run.prof http://10.216.13.118:6060/debug/pprof/allocs?seconds=120
+go tool pprof -http=:18080 mem_run.prof
 ```
 
 其中 net/http/pprof 使用 runtime/pprof 包来进行封装，并在 http 端口上暴露出来。runtime/pprof 可以用来产生 dump 文件，再使用 Go Tool PProf 来分析这运行日志。
 
 如果应用使用了自定义的 Mux，则需要手动注册一些路由规则：
+
 ```go
 r.HandleFunc("/debug/pprof/", pprof.Index)
 r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -196,6 +244,7 @@ r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 r.HandleFunc("/debug/pprof/trace", pprof.Trace)
 ```
+
 ```go
 func RouteRegister(rg *gin.RouterGroup, prefixOptions ...string) {
    prefix := getPrefix(prefixOptions...)
@@ -218,16 +267,18 @@ func RouteRegister(rg *gin.RouterGroup, prefixOptions ...string) {
 }
 ```
 
-其它的数据的分析和CPU、Memory基本一致。下面列一下所有的数据类型：
+其它的数据的分析和 CPU、Memory 基本一致。下面列一下所有的数据类型：
 
 http://localhost:6060/debug/pprof/ ：获取概况信息，即图一的信息
 http://localhost:6060/debug/pprof/allocs : 分析内存分配
 http://localhost:6060/debug/pprof/block : 分析堆栈跟踪导致阻塞的同步原语
-http://localhost:6060/debug/pprof/cmdline : 分析命令行调用的程序，web下调用报错
+http://localhost:6060/debug/pprof/cmdline : 分析命令行调用的程序，web 下调用报错
 http://localhost:6060/debug/pprof/goroutine : 分析当前 goroutine 的堆栈信息
 http://localhost:6060/debug/pprof/heap : 分析当前活动对象内存分配
 http://localhost:6060/debug/pprof/mutex : 分析堆栈跟踪竞争状态互斥锁的持有者
-http://localhost:6060/debug/pprof/profile : 分析一定持续时间内CPU的使用情况
+http://localhost:6060/debug/pprof/profile : 分析一定持续时间内 CPU 的使用情况
 http://localhost:6060/debug/pprof/threadcreate : 分析堆栈跟踪系统新线程的创建
 http://localhost:6060/debug/pprof/trace : 分析追踪当前程序的执行状况
 
+
+http://172.30.30.32:6060/debug/pprof/goroutine

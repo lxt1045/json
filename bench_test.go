@@ -415,30 +415,30 @@ func BenchmarkSmallBinding(b *testing.B) {
 		}
 	})
 
-	runtime.GC()
-	b.Run("decode-parallel-lxt", func(b *testing.B) {
-		b.SetBytes(int64(len(bs)))
-		// b.ReportAllocs()
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				d := testdata.Book{}
-				_ = lxt.UnmarshalString(str, &d)
-			}
-		})
-	})
+	// runtime.GC()
+	// b.Run("decode-parallel-lxt", func(b *testing.B) {
+	// 	b.SetBytes(int64(len(bs)))
+	// 	// b.ReportAllocs()
+	// 	b.ResetTimer()
+	// 	b.RunParallel(func(pb *testing.PB) {
+	// 		for pb.Next() {
+	// 			d := testdata.Book{}
+	// 			_ = lxt.UnmarshalString(str, &d)
+	// 		}
+	// 	})
+	// })
 
-	runtime.GC()
-	b.Run("decode-parallel-sonic", func(b *testing.B) {
-		b.SetBytes(int64(len(bs)))
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				d := testdata.Book{}
-				_ = sonic.UnmarshalString(str, &d)
-			}
-		})
-	})
+	// runtime.GC()
+	// b.Run("decode-parallel-sonic", func(b *testing.B) {
+	// 	b.SetBytes(int64(len(bs)))
+	// 	b.ResetTimer()
+	// 	b.RunParallel(func(pb *testing.PB) {
+	// 		for pb.Next() {
+	// 			d := testdata.Book{}
+	// 			_ = sonic.UnmarshalString(str, &d)
+	// 		}
+	// 	})
+	// })
 
 	// encode
 

@@ -5,7 +5,6 @@ import (
 )
 
 func Test_binTree(t *testing.T) {
-
 	t.Run("1", func(t *testing.T) {
 		tags := []*TagInfo{
 			{TagName: "profile_sidebar_fill_color"},
@@ -52,8 +51,6 @@ func Test_binTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// t.Logf("%+v", bintree)
-
 		for i, k := range tags {
 			tag := bintree.Get(k.TagName + `"`)
 			if tag == nil {
@@ -248,6 +245,11 @@ func Benchmark_binTree2(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+
+	bintree2, err := NewTireTree2(tags)
+	if err != nil {
+		b.Fatal(err)
+	}
 	// b.Logf("%+v", bintree)
 
 	// b.Run("NewTireTree", func(b *testing.B) {
@@ -260,6 +262,15 @@ func Benchmark_binTree2(b *testing.B) {
 	// 	b.SetBytes(int64(b.N))
 	// })
 
+	b.Run("binTree2", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			bintree2.Get("profile_sidebar_border_color\"")
+		}
+		b.StopTimer()
+		b.SetBytes(int64(b.N))
+	})
 	b.Run("binTree", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -269,6 +280,16 @@ func Benchmark_binTree2(b *testing.B) {
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
 	})
+	b.Run("binTree2-Get2", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			bintree2.Get2("profile_sidebar_border_color\"")
+		}
+		b.StopTimer()
+		b.SetBytes(int64(b.N))
+	})
+	// return
 	// return
 	b.Run("binTree-Get2", func(b *testing.B) {
 		b.ReportAllocs()
@@ -279,12 +300,20 @@ func Benchmark_binTree2(b *testing.B) {
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
 	})
-	// return
 	b.Run("binTree-time_zone", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			bintree.Get("time_zone\"")
+		}
+		b.StopTimer()
+		b.SetBytes(int64(b.N))
+	})
+	b.Run("binTree2-time_zone", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			bintree2.Get("time_zone\"")
 		}
 		b.StopTimer()
 		b.SetBytes(int64(b.N))
@@ -295,6 +324,15 @@ func Benchmark_binTree2(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			bintree.Get2("time_zone\"")
+		}
+		b.StopTimer()
+		b.SetBytes(int64(b.N))
+	})
+	b.Run("binTree2-time_zone-Get2", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			bintree2.Get2("time_zone\"")
 		}
 		b.StopTimer()
 		b.SetBytes(int64(b.N))

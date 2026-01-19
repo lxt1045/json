@@ -582,7 +582,7 @@ func TestStructST(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf(string(bs))
+	t.Log(string(bs))
 
 	t.Run("qq", func(t *testing.T) {
 		// err := Unmarshal([]byte(d.bs), d.data)
@@ -720,4 +720,23 @@ func BenchmarkParallelSafety(b *testing.B) {
 			}
 		})
 	})
+}
+
+func Benchmark_makeSwissMapEface(b *testing.B) {
+	b.Run("loop1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			m := makeSwissMapEface(32)
+			for k := 0; k < 32; k++ {
+				m[strconv.Itoa(k)] = k
+			}
+		}
+	})
+}
+
+func Test_makeSwissMapEface(t *testing.T) {
+	m := makeSwissMapEface(32)
+	for k := 0; k < 32; k++ {
+		m[strconv.Itoa(k)] = k
+	}
+	t.Logf("%+v", m)
 }

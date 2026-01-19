@@ -27,37 +27,35 @@ import (
 	"unsafe"
 )
 
-type tireTreeNode struct {
-	next int16 // 下一个状态
-	idx  int16 // 只有 '"' 才是结束标志，才有 idx
-	skip int16 // 有相同前缀的; 需跳过的字符数量; TODO: 如果跳过的字符中有 ":" 怎么处理，会有BUG？ 在zip后加入 ":" 字符的特殊处理?
+type tireTreeNode2 struct {
+	next int16    // 下一个状态
+	skip int16    // 有相同前缀的
+	tag  *TagInfo // 只有 '"' 才是结束标志，才有 idx
+}
+type tireTree2 struct {
+	tree [][128]tireTreeNode2 // 状态
+	// ptree *[1 << 20]tireTreeNode2
+	// tags []*TagInfo
 }
 
-// 实际上就是一个状态机
-type tireTree struct {
-	tree [][128]tireTreeNode // 状态
-	// ptree *[1 << 20]tireTreeNode
-	tags []*TagInfo
-}
-
-func initTireTreeNode(tree *[128]tireTreeNode) {
+func initTireTreeNode2(tree *[128]tireTreeNode2) {
 	for i := range tree {
-		tree[i].idx = -1
+		// tree[i].idx = -1
 		tree[i].next = -1
 	}
 }
-func NewTireTree(tags []*TagInfo) (root *tireTree, err error) {
+func NewTireTree2(tags []*TagInfo) (root *tireTree2, err error) {
 	// for i, tag := range tags {
 	// 	tags[i].TagName = tag.TagName + `"`
 	// }
-	root = &tireTree{
-		tree: make([][128]tireTreeNode, 1, 4),
-		tags: tags,
+	root = &tireTree2{
+		tree: make([][128]tireTreeNode2, 1, 4),
+		// tags: tags,
 	}
-	initTireTreeNode(&root.tree[0])
+	initTireTreeNode2(&root.tree[0])
 
 out:
-	for idx, tag := range tags {
+	for _, tag := range tags {
 		key := tag.TagName + `"`
 		status := &root.tree[0]
 		for iKey, c := range []byte(key) {
@@ -67,43 +65,44 @@ out:
 			// 没有被占领或是叶子结点
 			if n.next < 0 {
 				// 没有被占领
-				if n.idx < 0 {
+				if n.tag == nil {
 					//占领此叶节点
-					n.idx = int16(idx)
+					n.tag = tag
 					continue out
 				}
-				// 旧的叶子节点的tag名字
-				old := root.tags[n.idx].TagName + `"`
+				// 叶子节点
+				old := n.tag.TagName + `"`
 				if old == key {
 					err = fmt.Errorf("duplicate key: %s", key)
 					return
 				}
-				// // old 的终点是 '"' ，因为k不可能是‘"’（是的话就和old相等了）,所以old必然还有后续，除非报错了
-				// if len(old) == iKey+1 {
-				// 	err = fmt.Errorf("duplicate key: %s", key)
-				// 	return
-				// }
+
+				// 已经是 old 的终点 '"' 了。
+				if len(old) == iKey+1 {
+					err = fmt.Errorf("error key: %s", key)
+					return
+				}
 				// 修改老的 status
 				nOld := *n
-				n.idx = -1                     // old 要向后延长，所以不再是叶子节点了
-				n.next = int16(len(root.tree)) // 插入一个新节点（新的状态行）
+				n.tag = nil
+				n.next = int16(len(root.tree)) // 找到下一个节点
 
 				// 给旧的 node 添加状态
-				root.tree = append(root.tree, [128]tireTreeNode{})
+				root.tree = append(root.tree, [128]tireTreeNode2{})
 				status = &root.tree[len(root.tree)-1] // 创建新的状态
-				initTireTreeNode(status)
+				initTireTreeNode2(status)
 
-				kOld := old[iKey+1] % 128 // 将 old 拆下一个字符，并向后延长
+				kOld := old[iKey+1] % 128
 				status[kOld] = nOld
 
-				// key 的 next 在 for 的下一轮再处理！
-				// // kNew := key[iKey+1] % 128
-				// // if kNew != kOld {
-				// // 	//占领此叶节点
-				// // 	status[k].idx = int16(idx + 1)
-				// // 	continue out
-				// // }
+				// kNew := key[iKey+1] % 128
+				// if kNew != kOld {
+				// 	//占领此叶节点
+				// 	status[k].idx = int16(idx + 1)
+				// 	continue out
+				// }
 
+				// key 的 next 在 for 的下一轮再处理！
 				continue
 			}
 			status = &root.tree[n.next]
@@ -114,13 +113,13 @@ out:
 	// }
 
 	if cap(root.tree) > len(root.tree) {
-		// tree := make([][128]tireTreeNode, 0, len(root.tree))
+		// tree := make([][128]tireTreeNode2, 0, len(root.tree))
 		// tree = append(tree, root.tree...)
 		// root.tree = tree
 		root.tree = root.tree[:len(root.tree):len(root.tree)]
 	}
 
-	// root.ptree = (*[1 << 20]tireTreeNode)(unsafe.Pointer(&root.tree[0]))
+	// root.ptree = (*[1 << 20]tireTreeNode2)(unsafe.Pointer(&root.tree[0]))
 
 	// 处理共同前缀的情形
 	for renew := true; renew; {
@@ -136,7 +135,7 @@ out:
 	return
 }
 
-func (root *tireTree) skipTree() (rennew bool) {
+func (root *tireTree2) skipTree() (rennew bool) {
 	for current := range root.tree {
 		if current == len(root.tree)-1 {
 			break
@@ -151,7 +150,7 @@ func (root *tireTree) skipTree() (rennew bool) {
 			nextStatus := &root.tree[nextsDeleted] // 即将删除的 status 行
 			count, nextNext := 0, int16(0)
 			for j := range nextStatus {
-				if nextStatus[j].next >= 0 || nextStatus[j].idx >= 0 {
+				if nextStatus[j].next >= 0 || nextStatus[j].tag != nil {
 					count++
 					nextNext = nextStatus[j].next
 				}
@@ -185,7 +184,7 @@ func (root *tireTree) skipTree() (rennew bool) {
 	return
 }
 
-func (root *tireTree) zipTree() (rennew bool) {
+func (root *tireTree2) zipTree() (rennew bool) {
 	for current := range root.tree {
 		if current == len(root.tree)-1 {
 			break
@@ -196,7 +195,7 @@ func (root *tireTree) zipTree() (rennew bool) {
 		// 用于记录当前状态行已存在的状态
 		m := make(map[uint8]struct{})
 		for j := range currentStatus {
-			if currentStatus[j].next >= 0 || currentStatus[j].idx >= 0 {
+			if currentStatus[j].next >= 0 || currentStatus[j].tag != nil {
 				m[uint8(j)] = struct{}{}
 			}
 		}
@@ -215,7 +214,7 @@ func (root *tireTree) zipTree() (rennew bool) {
 					canZip = false
 					break
 				}
-				if nextStatus[j].next >= 0 || nextStatus[j].idx >= 0 {
+				if nextStatus[j].next >= 0 || nextStatus[j].tag != nil {
 					if _, ok := m[uint8(j)]; ok {
 						// 和父节点有冲突，不适合压缩节点;
 						canZip = false
@@ -229,7 +228,7 @@ func (root *tireTree) zipTree() (rennew bool) {
 
 			// 开始处理压缩逻辑
 			for j := range nextStatus {
-				if nextStatus[j].next >= 0 || nextStatus[j].idx >= 0 {
+				if nextStatus[j].next >= 0 || nextStatus[j].tag != nil {
 					currentStatus[j] = nextStatus[j]
 				}
 			}
@@ -259,8 +258,8 @@ func (root *tireTree) zipTree() (rennew bool) {
 	return
 }
 
-func (root *tireTree) Get2(key string) *TagInfo {
-	p := (*[1 << 20]tireTreeNode)(unsafe.Pointer(&root.tree[0]))
+func (root *tireTree2) Get2(key string) *TagInfo {
+	p := (*[1 << 20]tireTreeNode2)(unsafe.Pointer(&root.tree[0]))
 	// p := b.ptree
 	idx := int16(0)
 	// for _, c := range []byte(key) {
@@ -274,8 +273,8 @@ func (root *tireTree) Get2(key string) *TagInfo {
 			continue
 		}
 
-		if next.idx >= 0 {
-			tag := root.tags[next.idx]
+		if next.tag != nil {
+			tag := next.tag
 			if len(key) > len(tag.TagName) && key[len(tag.TagName)] == '"' && tag.TagName == key[:len(tag.TagName)] {
 				return tag
 			}
@@ -285,7 +284,7 @@ func (root *tireTree) Get2(key string) *TagInfo {
 
 	return nil
 }
-func (root *tireTree) Get(key string) *TagInfo {
+func (root *tireTree2) Get(key string) *TagInfo {
 	status := &root.tree[0]
 	// for _, c := range []byte(key) {
 	for i := 0; i < len(key); i++ {
@@ -297,8 +296,8 @@ func (root *tireTree) Get(key string) *TagInfo {
 			status = &root.tree[next.next]
 			continue
 		}
-		if next.idx >= 0 {
-			tag := root.tags[next.idx]
+		if next.tag != nil {
+			tag := next.tag
 			if len(key) > len(tag.TagName) && key[len(tag.TagName)] == '"' && tag.TagName == key[:len(tag.TagName)] {
 				return tag
 			}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
-	"sync"
 	"testing"
 	"unsafe"
 )
@@ -160,6 +159,7 @@ func Benchmark_CacheStruct(b *testing.B) {
 	}
 }
 
+/*
 func Test_Map(t *testing.T) {
 	m := make(map[string]interface{})
 	var in interface{} = m
@@ -179,9 +179,9 @@ func Test_Map(t *testing.T) {
 	t.Logf("len(m):%+v\n", len(m))
 }
 
-/*
-go test -benchmem -run=^$ -bench ^Benchmark_makeMap$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
-*/
+
+// go test -benchmem -run=^$ -bench ^Benchmark_makeMap$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
+
 func Benchmark_makeMap(b *testing.B) {
 	b.Run("pool", func(b *testing.B) {
 		m := make(map[string]interface{})
@@ -244,3 +244,4 @@ func Benchmark_makeMap(b *testing.B) {
 		}
 	})
 }
+/*/
