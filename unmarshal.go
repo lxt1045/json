@@ -122,6 +122,7 @@ func parseObj1(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 			storeSon := PoolStore{
 				tag:         son,
 				pointerPool: store.pointerPool,
+				slicePool:   store.slicePool,
 				obj:         store.obj,
 			}
 			n, iSlash = son.fUnm(iSlash-i, storeSon, stream[i:])
@@ -208,6 +209,7 @@ func parseObj(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 			storeSon := PoolStore{
 				tag:         son,
 				pointerPool: store.pointerPool,
+				slicePool:   store.slicePool,
 				obj:         store.obj,
 			}
 			n, iSlash = son.fUnm(iSlash-i, storeSon, stream[i:])
@@ -368,7 +370,7 @@ func parseSliceInterface(idxSlash int, stream string) (s []interface{}, i, iSlas
 	iSlash = idxSlash
 	i = trimSpace(stream[i:])
 	var value interface{}
-	s = poolSliceInterface.Get().([]interface{})
+	s = poolSliceInterface.Get().([]interface{})[:0]
 	for n, nB := 0, 0; ; {
 		n, iSlash = parseInterface(iSlash-i, stream[i:], &value)
 		iSlash += i
@@ -391,7 +393,7 @@ func parseSliceInterface(idxSlash int, stream string) (s []interface{}, i, iSlas
 	}
 }
 
-//parseSlice 可以细化一下，每个类型来一个，速度可以加快
+// parseSlice 可以细化一下，每个类型来一个，速度可以加快
 func parseSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -462,7 +464,7 @@ func parseSlice2(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	return
 }
 
-//parseSlice 可以细化一下，每个类型来一个，速度可以加快
+// parseSlice 可以细化一下，每个类型来一个，速度可以加快
 func parseSlice3(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -518,8 +520,8 @@ func parseSlice3(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	return
 }
 
-//parseSlice 可以细化一下，每个类型来一个，速度可以加快
-func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+// parseSlice 可以细化一下，每个类型来一个，速度可以加快
+func parseSlice_00(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
 	if stream[i] == ']' {
@@ -575,7 +577,65 @@ func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	return
 }
 
-//parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
+// parseSlice 可以细化一下，每个类型来一个，速度可以加快
+func parseSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
+	iSlash = idxSlash
+	i = trimSpace(stream)
+	if stream[i] == ']' {
+		i++
+		pHeader := (*SliceHeader)(store.obj)
+		pHeader.Data = store.obj
+		return
+	}
+	son := store.tag.ChildList[0]
+	size := son.TypeSize
+
+	// TODO : 从 store.pool 获取 pool
+	// uint8s := store.tag.SPool.Get().(*[]uint8) // cpu %12; , cpu 20%
+
+	// uint8s := store.GetObjs(store.tag.idxSliceObjPool, store.tag.BaseType)
+	// uint8s := store.GetObjs(store.tag.sliceElemGoType)
+	// p := son.sliceCache.GetN(4)
+	p := unsafe_NewArray(son.sliceCache.goType, 4)
+
+	pLen, pCap := 0, 4
+	pHeader := (*SliceHeader)(store.obj)
+	store.tag = son
+	for n, nB := 0, 0; ; {
+		store.obj = pointerOffset(p, uintptr(pLen*size))
+		n, iSlash = son.fUnm(iSlash-i, store, stream[i:])
+		pLen++
+		iSlash += i
+		i += n
+		n, nB = parseByte(stream[i:], ',')
+		i += n
+		if nB != 1 {
+			if nB == 0 && ']' == stream[i] {
+				i++
+				break
+			}
+			panic(lxterrs.New(ErrStream(stream[i:])))
+		}
+		if pLen == pCap {
+			l := pLen * size
+			pCap = pCap * 2
+			c := pCap * size
+			pNew := unsafe_NewArray(son.sliceCache.goType, pCap)
+			dst := (*[1 << 30]byte)(pNew)[:l:c]
+			src := (*[1 << 30]byte)(p)[:l:l]
+			copy(dst, src)
+			// dst = append(dst, src...)
+			p = pNew
+		}
+	}
+
+	pHeader.Data = p
+	pHeader.Len = pLen
+	pHeader.Cap = pCap
+	return
+}
+
+// parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
 func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -597,6 +657,7 @@ func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash i
 			obj:         pointerOffset(p, uintptr(pLen*size)),
 			tag:         son,
 			pointerPool: store.pointerPool,
+			slicePool:   store.slicePool,
 		}, stream[i:])
 		pLen++
 		iSlash += i
@@ -636,7 +697,7 @@ func parseNoscanSlice(idxSlash int, stream string, store PoolStore) (i, iSlash i
 	return
 }
 
-//parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
+// parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
 func parseIntSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -686,7 +747,7 @@ func parseIntSlice(idxSlash int, stream string, store PoolStore) (i, iSlash int)
 	return
 }
 
-//parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
+// parseNoscanSlice 解析没有 pointer 的 slice，分配内存是不需要标注指针
 func parseIntSlice1(idxSlash int, stream string, store PoolStore) (i, iSlash int) {
 	iSlash = idxSlash
 	i = trimSpace(stream)
@@ -723,7 +784,7 @@ func parseIntSlice1(idxSlash int, stream string, store PoolStore) (i, iSlash int
 	return
 }
 
-//quadwords 4word: 64bit; d：doubleword，双字，32位; w：word，双字节，字，16位; b：byte，字节，8位
+// quadwords 4word: 64bit; d：doubleword，双字，32位; w：word，双字节，字，16位; b：byte，字节，8位
 // tag 实际上已经可以提前知道了，这里无需再取一次，重复了
 func parseSliceString1(idxSlash int, stream string, store PoolStore, SPoolN int, strsPool *sync.Pool) (i, iSlash int) {
 	iSlash = idxSlash
@@ -995,7 +1056,7 @@ func parseEmptyObjSlice(stream string, bLeft, bRight byte) (i int) {
 	return
 }
 
-//TODO 通过 IndexByte 的方式快速跳过； 在下一层处理，这里 设为 nil
+// TODO 通过 IndexByte 的方式快速跳过； 在下一层处理，这里 设为 nil
 // 如果是 其他： 找 ','
 // 如果是obj: 1. 找 ’}‘; 2. 找'{'； 3. 如果 2 比 1 小则循环 1 2
 // 如果是 slice : 1. 找 ’]‘; 2. 找'['； 3. 如果 2 比 1 小则循环 1 2
@@ -1059,7 +1120,7 @@ func parseEmpty(stream string) (i int) {
 	return
 }
 
-//解析 obj: {}, 或 []
+// 解析 obj: {}, 或 []
 func parseRoot(stream string, store PoolStore) (err error) {
 	idxSlash := strings.IndexByte(stream[1:], '\\')
 	if idxSlash < 0 {
@@ -1160,7 +1221,7 @@ func parseUnescapeStr(stream string, nextQuotesIdx, nextSlashIdxIn int) (raw str
 }
 
 // unescape unescapes a string
-//“\\”、“\"”、“\/”、“\b”、“\f”、“\n”、“\r”、“\t”
+// “\\”、“\"”、“\/”、“\b”、“\f”、“\n”、“\r”、“\t”
 // \u后面跟随4位16进制数字: "\uD83D\uDE02"
 func unescapeStr(raw string) (word []byte, size int) {
 	// i==0是 '\\', 所以从1开始

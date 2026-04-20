@@ -13,7 +13,7 @@ func TestUnmarshal(t *testing.T) {
 		panic(err)
 	}
 
-	t.Logf(",len:%d", len(bs))
+	t.Logf("len:%d", len(bs))
 	var m testdata.Twitter
 	t.Run("", func(t *testing.T) {
 		for i := 0; i < 1000; i++ {
@@ -23,5 +23,5 @@ func TestUnmarshal(t *testing.T) {
 			}
 		}
 	})
-	// runtime.GC()
+	// runtime.GC()  // 0xc0000319c8
 }

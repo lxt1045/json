@@ -73,7 +73,7 @@ func newMapArray(ch chan *[]byte) {
 
 var (
 	poolSliceInterface = sync.Pool{New: func() any {
-		return make([]interface{}, 1024)
+		return make([]interface{}, 0, 1024)
 	}}
 
 	pairPool = sync.Pool{
@@ -435,7 +435,7 @@ func (b *BatchObj) MakeN(n int) (p unsafe.Pointer) {
 	if idx <= sn.end {
 		return pointerOffset(sn.p, uintptr(idx-offset))
 	}
-	const N = 1 << 12
+	const N = batchN
 	sn = &sliceObj{
 		p:   unsafe_NewArray(b.goType, N),
 		idx: offset,
