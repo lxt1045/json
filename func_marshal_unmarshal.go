@@ -827,19 +827,24 @@ func structMFuncs(pidx, sonPidx *uintptr) (fUnm unmFunc, fM mFunc) {
 				iSlash = idxSlash
 				return
 			}
-			store.obj = pointerOffset(store.obj, store.tag.Offset)
-			store.pointerPool = pointerOffset(store.pointerPool, *sonPidx) //这里有问题，这个 pool 导致 slicePool 的偏移
+		store.obj = pointerOffset(store.obj, store.tag.Offset)
+		// 只有 pool 基址非 nil 时才做偏移,否则保持 nil 避免产生无效指针触发 GC 报错
+		if store.pointerPool != nil {
+			store.pointerPool = pointerOffset(store.pointerPool, *sonPidx)
+		}
+		if store.slicePool != nil {
 			store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
-			n, iSlash := parseObj(idxSlash-1, stream[1:], store)
-			iSlash++
-			i += n + 1
-			return
 		}
-		fM = func(store Store, in []byte) (out []byte) {
-			// store.obj = pointerOffset(store.obj, store.tag.Offset)
-			out = marshalStruct(store, in)
-			return
-		}
+		n, iSlash := parseObj(idxSlash-1, stream[1:], store)
+		iSlash++
+		i += n + 1
+		return
+	}
+	fM = func(store Store, in []byte) (out []byte) {
+		// store.obj = pointerOffset(store.obj, store.tag.Offset)
+		out = marshalStruct(store, in)
+		return
+	}
 		return
 	}
 	fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
@@ -849,8 +854,12 @@ func structMFuncs(pidx, sonPidx *uintptr) (fUnm unmFunc, fM mFunc) {
 			return
 		}
 		store.obj = pointerOffset(store.obj, store.tag.Offset)
-		store.pointerPool = pointerOffset(store.pointerPool, *sonPidx) //这里有问题，这个 pool 导致 slicePool 的偏移
-		store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+		if store.pointerPool != nil {
+			store.pointerPool = pointerOffset(store.pointerPool, *sonPidx)
+		}
+		if store.slicePool != nil {
+			store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+		}
 		p := *(*unsafe.Pointer)(store.obj)
 		if p == nil {
 			store.obj = store.Idx(*pidx)
@@ -1063,7 +1072,9 @@ func sliceMFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 				return
 			}
 			store.obj = pointerOffset(store.obj, store.tag.Offset) //
-			store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+			if store.slicePool != nil {
+				store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+			}
 			n, iSlash := parseSlice(idxSlash-1, stream[1:], store)
 			iSlash++
 			i += n + 1
@@ -1089,7 +1100,9 @@ func sliceMFuncs(pidx *uintptr) (fUnm unmFunc, fM mFunc) {
 			return
 		}
 		store.obj = pointerOffset(store.obj, store.tag.Offset) //
-		store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+		if store.slicePool != nil {
+			store.slicePool = pointerOffset(store.slicePool, store.tag.idxSliceObjPool)
+		}
 		p := *(*unsafe.Pointer)(store.obj)
 		if p == nil {
 			store.obj = store.Idx(*pidx) // TODO 这个可以 pidx==nil 合并? 这时 *pidx==0？
@@ -1249,7 +1262,9 @@ func stringM(store Store, in []byte) (out []byte) {
 	str := *(*string)(store.obj)
 	return stringMm(str, in)
 }
-func stringMm(str string, in []byte) (out []byte) {
+
+// SIMD 指令优化，还无法和功能性兼容，后续改进
+func stringMm_0(str string, in []byte) (out []byte) {
 	out = append(in, '"')
 	// strings.ReplaceAll(str, "\\", "\\\\")
 	// nSlash := strings.Count(str, "\\")
@@ -1336,6 +1351,49 @@ func stringMm(str string, in []byte) (out []byte) {
 			}
 		}
 	*/
+	out = append(out, '"')
+	return
+}
+
+// stringMm 将 Go string 按 RFC 8259 编码为 JSON string, 并写入 in 末尾。
+// 历史实现只处理了 `\` 与 `"`, 丢失了控制字符的转义, 属于正确性 bug。
+// 这里一次性处理: `"` `\\` `\b` `\f` `\n` `\r` `\t` 以及其他控制字符 (\u00XX)。
+// 非 ASCII UTF-8 字节原样写出 (Go string 即 UTF-8), 与 encoding/json 的 SetEscapeHTML(false) 行为一致。
+func stringMm(str string, in []byte) (out []byte) {
+	out = append(in, '"')
+	start := 0
+	for i := 0; i < len(str); i++ {
+		b := str[i]
+		if b >= 0x20 && b != '"' && b != '\\' {
+			continue
+		}
+		if start < i {
+			out = append(out, str[start:i]...)
+		}
+		switch b {
+		case '"':
+			out = append(out, '\\', '"')
+		case '\\':
+			out = append(out, '\\', '\\')
+		case '\b':
+			out = append(out, '\\', 'b')
+		case '\f':
+			out = append(out, '\\', 'f')
+		case '\n':
+			out = append(out, '\\', 'n')
+		case '\r':
+			out = append(out, '\\', 'r')
+		case '\t':
+			out = append(out, '\\', 't')
+		default:
+			const hex = "0123456789abcdef"
+			out = append(out, '\\', 'u', '0', '0', hex[b>>4], hex[b&0xF])
+		}
+		start = i + 1
+	}
+	if start < len(str) {
+		out = append(out, str[start:]...)
+	}
 	out = append(out, '"')
 	return
 }

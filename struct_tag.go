@@ -212,6 +212,66 @@ func (ti *TagInfo) setFuncs(ptrBuilder, sliceBuilder *TypeBuilder, typ reflect.T
 		var sonIdx uintptr = 0
 		ti.fUnm, ti.fM = structMFuncs(pidx, &sonIdx)
 
+		// 递归类型检测: 如果 baseType 已经在祖先链上，则复用祖先 tag 并安装延迟代理，避免无限递归
+		var recursiveAncestor *TagInfo
+		{
+			h := UnpackType(baseType).Hash
+			for _, a := range ancestors {
+				if a.hash == h {
+					recursiveAncestor = a.tag
+					break
+				}
+			}
+		}
+
+		if recursiveAncestor != nil {
+			// 使用运行时代理:解析/序列化时把 store.tag 切换成已完整构建的祖先 tag,
+			// 借用其 tireTree/ChildList 等结构进行处理。祖先 tag 在运行时一定已就绪,
+			// 因为外层 LoadTagNodeSlow 会在根调用返回后才缓存并返回。
+			son = recursiveAncestor
+			capturedPidx := pidx
+			ti.fUnm = func(idxSlash int, store PoolStore, stream string) (i, iSlash int) {
+				iSlash = idxSlash
+				if stream[0] == 'n' && stream[1] == 'u' && stream[2] == 'l' && stream[3] == 'l' {
+					i = 4
+					return
+				}
+				store.obj = pointerOffset(store.obj, store.tag.Offset)
+				if capturedPidx != nil {
+					p := *(*unsafe.Pointer)(store.obj)
+					if p == nil {
+						// 为递归节点分配新的对象
+						store.obj = store.Idx(*capturedPidx)
+					}
+				}
+				// 切换到祖先 tag,并为嵌套层重新初始化 pool,避免 pool 偏移累加越界
+				store.tag = recursiveAncestor
+				if recursiveAncestor.ptrCache != nil {
+					store.pointerPool = recursiveAncestor.ptrCache.Get()
+				} else {
+					store.pointerPool = nil
+				}
+				store.slicePool = nil
+				n, is := parseObj(idxSlash-1, stream[1:], store)
+				iSlash = is + 1
+				i = n + 1
+				return
+			}
+			ti.fM = func(store Store, in []byte) (out []byte) {
+				p := *(*unsafe.Pointer)(store.obj)
+				if p == nil {
+					out = append(in, "null"...)
+					return
+				}
+				store.obj = p
+				store.tag = recursiveAncestor
+				out = marshalStruct(store, in)
+				return
+			}
+			// 递归分支不再向父节点传递 ChildList / slicePoolType,避免污染
+			break
+		}
+
 		son, err = NewStructTagInfo(baseType, ancestors)
 		// goType := UnpackType(baseType)
 		// son, err = LoadTagNodeByType(baseType, goType.Hash)
@@ -334,19 +394,14 @@ func NewStructTagInfo(typIn reflect.Type, ancestors []ancestor) (ti *TagInfo, er
 		TypeSize: int(typIn.Size()),
 	}
 
-	// 通过 ancestors 避免死循环
+	// 通过 ancestors 避免死循环。
+	// 注意: 现在 setFuncs 会在识别到递归类型时直接复用祖先 tag 并安装运行时代理,
+	// 不会再调到这里。这里保留作为兜底:直接复用祖先 tag,避免无限递归。
 	goType := UnpackType(typIn)
-	isNestedLoop := false // 是否嵌套循环
 	for _, a := range ancestors {
 		if a.hash == goType.Hash {
-			ti = nil // 以返回 nil 来处理后续逻辑
-
-			// TODO: 暂时不支持嵌套循环类型
-			panic("Nested loops are not yet supported")
-			return // 避免嵌套循环
-			isNestedLoop = true
-			_ = isNestedLoop
-			break
+			ti = a.tag
+			return
 			/*
 				// TODO: 针对循环类型
 				// fUnm 和 fM 里重新创建缓存和对象，再获取 tag 继续往下执行

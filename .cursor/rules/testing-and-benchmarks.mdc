@@ -1,0 +1,42 @@
+---
+description: 测试与基准测试规范
+globs: **/*_test.go
+alwaysApply: false
+---
+
+# 测试规范
+
+## 必须运行的命令
+
+修改本库代码后, 至少执行以下三组命令, 全部通过才能视为完成:
+
+```powershell
+# 1. 常规测试
+go test -count=1 -timeout 120s ./...
+
+# 2. 竞态/checkptr 测试 (用于捕获 unsafe 使用问题)
+go test -race -count=1 -timeout 300s ./...
+
+# 3. 新版 Go 的兼容性 (本库曾因 GC 规则变严而报 "invalid pointer found on stack")
+go version   # 确认 >= 1.18, 本仓库在 1.25 下也必须全绿
+```
+
+## 编写测试
+
+- 新增功能必须有对应的 `*_test.go` 测试, 用例要覆盖"边界 / 特殊字符 / 嵌套"三类。
+- 对 Marshal 结果的正确性校验优先用 **"标准库能否反解析"** 做断言, 而不是字节级比较:
+  ```go
+  bs, _ := Marshal(v)
+  var got T
+  if err := stdjson.Unmarshal(bs, &got); err != nil {
+      t.Fatalf("output not valid JSON: %v\n%s", err, bs)
+  }
+  ```
+- 递归类型 (struct 自引用) 的用例必须保留, 参见 `TestStructST`。
+
+## 历史坑位
+
+- `TestStruct` / `TestStructST` 在 Go 1.18+ 曾因 `PoolStore.pointerPool = pointerOffset(nil, offset)`
+  产生 fatal "invalid pointer on stack"; 不要回退此修复。
+- `tireTree.Get2` 旧版使用 `(*[1<<20]tireTreeNode)(unsafe.Pointer(...))`,
+  `-race` 下会 fatal "converted pointer straddles multiple allocations"; 已改为 `tree[row][col]`。

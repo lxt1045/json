@@ -1,0 +1,46 @@
+---
+description: unsafe.Pointer / 内存池安全规范 (本库大量使用 unsafe, 历史上踩过多次坑)
+globs: **/*.go
+alwaysApply: false
+---
+
+# unsafe.Pointer 使用规范
+
+本库大量使用 `unsafe.Pointer`、`uintptr` 和内部 runtime 函数 (`unsafe_NewArray`, `go:linkname` 等) 做内存池和类型裁剪。
+Go 1.18 起, 栈扫描 / checkptr 对非法指针使用变得更严格, 必须遵守以下约束:
+
+## 禁止事项
+
+- **不得**对 `nil` 基址做指针偏移再回塞到 `unsafe.Pointer` 字段上。
+  ```go
+  // BAD: 产生 0x180 这种"像指针"的值, Go 1.18+ 会 fatal
+  //   "invalid pointer found on stack"
+  store.pointerPool = pointerOffset(nil, offset)
+  ```
+- **不得**把 `uintptr` 直接转换回 `unsafe.Pointer` 后解引用 (checkptr 会判定为跨分配)。
+- **不得**用 `(*[1<<20]T)(unsafe.Pointer(&slice[0]))` 这类"超出分配的数组"把 `[][N]T` 展平。
+  在 `go test -race` 的 checkptr 下会报 `converted pointer straddles multiple allocations`。
+
+## 正确做法
+
+1. 在结构体中长期持有的 `unsafe.Pointer` 字段 (例如 `PoolStore.pointerPool`), 若未初始化必须保持 `nil`:
+   ```go
+   if store.pointerPool != nil {
+       store.pointerPool = pointerOffset(store.pointerPool, offset)
+   }
+   ```
+2. 内存池的底层缓冲必须由其它对象 (如 `*TagInfo.ptrCache *BatchObj`) 持有引用, 保证 GC 不回收; 栈上只保留派生指针。
+3. 跨越分配边界的索引请用"二维下标" (`tree[row][col]`) 替代指针 cast, 编译器会内联成相同的汇编。
+4. 调试"无效指针"问题时, 优先用 `go test -race` (自带 checkptr) 复现, 它能给出精确栈帧。
+
+## 递归类型构建
+
+- `NewStructTagInfo` 在构建 tag 树时通过 `ancestors` 检测递归类型 (如 `type ST struct { ST *ST }`)。
+- 禁止直接对递归类型再次递归构建; 应在 `setFuncs` 中安装一个**运行时代理**,
+  代理在调用时把 `store.tag` 切换到已完整构建的祖先 tag 上, 并为嵌套层重新初始化 pool。
+- 祖先 tag 在运行时一定已构建完毕, 因为外层 `LoadTagNodeSlow` 会在整棵树构建后才缓存/返回。
+
+## 字符串序列化
+
+- 序列化 JSON 字符串必须按 RFC 8259 转义 `"`, `\`, `\b`, `\f`, `\n`, `\r`, `\t` 以及 `\x00`-`\x1f`。
+- 统一走 `stringMm(str, out)`, 不要重新发明只处理 `"` 和 `\\` 的"精简版"。

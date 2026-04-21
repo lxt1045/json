@@ -24,7 +24,6 @@ package json
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 type tireTreeNode struct {
@@ -260,20 +259,25 @@ func (root *tireTree) zipTree() (rennew bool) {
 }
 
 func (root *tireTree) Get2(key string) *TagInfo {
-	p := (*[1 << 20]tireTreeNode)(unsafe.Pointer(&root.tree[0]))
-	// p := b.ptree
-	idx := int16(0)
-	// for _, c := range []byte(key) {
+	// 原实现通过 `(*[1<<20]tireTreeNode)(unsafe.Pointer(&root.tree[0]))` 把
+	// [][128]tireTreeNode 展平为一个超大数组以便用 `idx+k` 统一索引。
+	// 这个 trick 在 go1.14 后的 -race (checkptr) 模式下会被判定为
+	// "converted pointer straddles multiple allocations" 而 fatal。
+	// 这里保持语义但使用二维索引 (row, col) 访问, 性能一致且符合 Go 内存模型。
+	tree := root.tree
+	row := int16(0)
 	for i := 0; i < len(key); i++ {
 		c := key[i]
 		k := c & 0x7f
-		next := p[idx+int16(k)]
-		idx = int16(next.next) * 128
+		if int(row) >= len(tree) {
+			return nil
+		}
+		next := tree[row][k]
+		row = next.next
 		if next.next >= 0 {
 			i += int(next.skip)
 			continue
 		}
-
 		if next.idx >= 0 {
 			tag := root.tags[next.idx]
 			if len(key) > len(tag.TagName) && key[len(tag.TagName)] == '"' && tag.TagName == key[:len(tag.TagName)] {

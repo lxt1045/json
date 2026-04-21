@@ -485,6 +485,21 @@ type Store struct {
 	obj unsafe.Pointer
 	tag *TagInfo
 }
+
+// PoolStore 是 Unmarshal 期间在函数之间传递的状态。
+//
+// 历史背景/踩坑记录:
+//  - 早期版本把 pointerPool/slicePool 设为 unsafe.Pointer, 并对 nil 基址做
+//    pointerOffset(nil, offset) 得到一个小数值地址 (例如 0x180) 并保留在栈上。
+//    旧版 Go 的 GC 对 unsafe.Pointer 检查较宽松能跑通, 但从 Go 1.18+/1.20+
+//    起 runtime 检查收紧, 这种"像指针但不指向任何分配"的值会触发
+//    fatal error: invalid pointer found on stack.
+//  - 一度尝试改为 uintptr, 但 `go test -race` 开启的 checkptr 会对
+//    `unsafe.Pointer(uintptr)` 的"非派生"转换报错。
+//
+// 最终方案: 保留 unsafe.Pointer, 但偏移计算必须基于真实分配的 base 指针,
+// 禁止对 nil 基址再叠加偏移量。入口处若 tag.ptrCache == nil,则 pointerPool/
+// slicePool 保持 nil,后续调用栈中也跳过对它们的偏移操作。
 type PoolStore struct {
 	obj         unsafe.Pointer
 	tag         *TagInfo
@@ -500,6 +515,8 @@ var (
 )
 
 func (ps PoolStore) Idx(idx uintptr) (p unsafe.Pointer) {
+	// pointerPool 指向的内存由 tag.ptrCache (*BatchObj) 持有, 始终存活。
+	// 调用方需保证 pointerPool != nil (否则含指针字段的 struct 无法分配)。
 	p = pointerOffset(ps.pointerPool, idx)
 	*(*unsafe.Pointer)(ps.obj) = p
 	return
@@ -550,8 +567,7 @@ func GrowInts(in []int) []int {
 }
 
 func (ps PoolStore) GetObjs(goType *GoType) []uint8 {
-	pObj := ps.slicePool
-	p := (*[]uint8)(pObj)
+	p := (*[]uint8)(ps.slicePool)
 	pool := *p
 	*p = nil
 	if cap(pool)-len(pool) > 0 {

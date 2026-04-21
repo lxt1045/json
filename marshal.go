@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 
 	lxterrs "github.com/lxt1045/errors"
 )
@@ -346,6 +345,7 @@ var jsonNumberType = reflect.TypeOf(stdjson.Number(""))
 func marshalKey(in []byte, k reflect.Value) (out []byte) {
 	out = in
 	if k.Kind() == reflect.String {
+		/*
 		// key = k.String()
 		out = append(out, '"')
 		// out = append(out, k.String()...) // TODO 需要转义： \ --> \\
@@ -366,7 +366,8 @@ func marshalKey(in []byte, k reflect.Value) (out []byte) {
 			}
 		}
 		out = append(out, '"')
-		return
+		return //*/
+		return stringMm(k.String(), out)
 	}
 	if tm, ok := k.Interface().(encoding.TextMarshaler); ok {
 		if k.Kind() == reflect.Pointer && k.IsNil() {

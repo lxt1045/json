@@ -188,7 +188,7 @@ func (b *TypeBuilder) AddFloat64(name string) *TypeBuilder {
 	return b.AddField(name, reflect.TypeOf(float64(1.2)))
 }
 
-func main() {
+func example() {
 	b := NewTypeBuilder().
 		AddString("Name").
 		AddInt64("Age")
