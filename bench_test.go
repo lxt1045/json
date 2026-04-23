@@ -415,30 +415,30 @@ func BenchmarkSmallBinding(b *testing.B) {
 		}
 	})
 
-	// runtime.GC()
-	// b.Run("decode-parallel-lxt", func(b *testing.B) {
-	// 	b.SetBytes(int64(len(bs)))
-	// 	// b.ReportAllocs()
-	// 	b.ResetTimer()
-	// 	b.RunParallel(func(pb *testing.PB) {
-	// 		for pb.Next() {
-	// 			d := testdata.Book{}
-	// 			_ = lxt.UnmarshalString(str, &d)
-	// 		}
-	// 	})
-	// })
+	runtime.GC()
+	b.Run("decode-parallel-lxt", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		// b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.Book{}
+				_ = lxt.UnmarshalString(str, &d)
+			}
+		})
+	})
 
-	// runtime.GC()
-	// b.Run("decode-parallel-sonic", func(b *testing.B) {
-	// 	b.SetBytes(int64(len(bs)))
-	// 	b.ResetTimer()
-	// 	b.RunParallel(func(pb *testing.PB) {
-	// 		for pb.Next() {
-	// 			d := testdata.Book{}
-	// 			_ = sonic.UnmarshalString(str, &d)
-	// 		}
-	// 	})
-	// })
+	runtime.GC()
+	b.Run("decode-parallel-sonic", func(b *testing.B) {
+		b.SetBytes(int64(len(bs)))
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				d := testdata.Book{}
+				_ = sonic.UnmarshalString(str, &d)
+			}
+		})
+	})
 
 	// encode
 
@@ -1165,7 +1165,7 @@ func BenchmarkUnmarshalMapInterface(b *testing.B) {
 go test -benchmem -run=^$ -bench ^BenchmarkObj$ github.com/lxt1045/json -count=1 -v -cpuprofile cpu.prof -c
 go test -benchmem -run=^$ -bench ^BenchmarkObj$ github.com/lxt1045/json -count=1 -v -memprofile cpu.prof -c
 go tool pprof ./json.test cpu.prof
-//   */
+// */
 func BenchmarkStrings(b *testing.B) {
 	// str := `{"X0":["1","2","3"]}`
 	// str := `{"X0":["1","2","3","2","3","2","3","2","3","2","3","2","3","2","3","2","3","2","3","2","3","2","3"],"X1":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X2":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X3":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X4":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X5":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X6":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X7":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X8":["1","2","3","2","3","2","3","2","3","2","3","2","3"],"X9":["1","2","3","2","3","2","3","2","3","2","3","2","3"]}`

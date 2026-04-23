@@ -628,8 +628,8 @@ func BenchmarkParallelSafety(b *testing.B) {
 	var wg sync.WaitGroup
 	runtime.GC()
 	for x := 0; x < 100; x++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			runtime.Gosched()
 			for i := 0; i < b.N; i++ {
@@ -650,8 +650,8 @@ func BenchmarkParallelSafety(b *testing.B) {
 	wg.Wait()
 
 	for x := 0; x < 100; x++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			runtime.Gosched()
 			for i := 0; i < b.N; i++ {
@@ -678,8 +678,8 @@ func BenchmarkParallelSafety(b *testing.B) {
 	// encode
 
 	for x := 0; x < 100; x++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			runtime.Gosched()
 			for i := 0; i < b.N; i++ {
@@ -700,8 +700,8 @@ func BenchmarkParallelSafety(b *testing.B) {
 	wg.Wait()
 
 	for x := 0; x < 100; x++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
 				d := testdata.Book{}

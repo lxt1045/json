@@ -5,6 +5,8 @@
 package json
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	lxterrs "github.com/lxt1045/errors"
@@ -25,6 +27,22 @@ func MarshalIndent(in interface{}, prefix, indent string) (out []byte, err error
 	}
 	out = AppendIndent(nil, raw, prefix, indent)
 	return
+}
+
+// MarshalIndent returns the JSON encoding of v with indentation.
+// Each element in a JSON object or array begins on a new,
+// indented line beginning with prefix followed by one or more
+// copies of indent according to the indentation nesting.
+func MarshalIndent1(v interface{}, prefix, indent string) ([]byte, error) {
+	bs, err := Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, bs, prefix, indent); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // AppendIndent 把紧凑的 JSON src 缩进后追加到 dst 并返回新 slice。

@@ -24,6 +24,7 @@ package json
 
 import (
 	"encoding"
+	"encoding/base64"
 	stdjson "encoding/json"
 	"fmt"
 	"reflect"
@@ -150,7 +151,10 @@ func marshalInterface(bs []byte, iface interface{}) (out []byte) {
 		}
 		out = append(out, ']')
 	case []byte:
-		panic("TODO: []byte...")
+		out = append(out, '"')
+		out = base64.StdEncoding.AppendEncode(out, v)
+		out = append(out, '"')
+		return
 	default:
 		value := reflect.ValueOf(iface)
 		out = marshalValue(out, value)
@@ -346,27 +350,27 @@ func marshalKey(in []byte, k reflect.Value) (out []byte) {
 	out = in
 	if k.Kind() == reflect.String {
 		/*
-		// key = k.String()
-		out = append(out, '"')
-		// out = append(out, k.String()...) // TODO 需要转义： \ --> \\
-		str := k.String()
-		nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
-		if nQuote == 0 {
-			out = append(out, str...) // TODO 需要转义： \ --> \\
-		} else {
-			for {
-				i := strings.IndexByte(str, '"')
-				if i == -1 {
-					out = append(out, str...)
-					break
+			// key = k.String()
+			out = append(out, '"')
+			// out = append(out, k.String()...) // TODO 需要转义： \ --> \\
+			str := k.String()
+			nQuote := strings.Count(str, "\"") // 只处理 " , \ 可以不处理
+			if nQuote == 0 {
+				out = append(out, str...) // TODO 需要转义： \ --> \\
+			} else {
+				for {
+					i := strings.IndexByte(str, '"')
+					if i == -1 {
+						out = append(out, str...)
+						break
+					}
+					out = append(out, str[:i]...)
+					out = append(out, '\\', '"')
+					str = str[i+1:]
 				}
-				out = append(out, str[:i]...)
-				out = append(out, '\\', '"')
-				str = str[i+1:]
 			}
-		}
-		out = append(out, '"')
-		return //*/
+			out = append(out, '"')
+			return //*/
 		return stringMm(k.String(), out)
 	}
 	if tm, ok := k.Interface().(encoding.TextMarshaler); ok {

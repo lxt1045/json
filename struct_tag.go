@@ -150,7 +150,9 @@ func (ti *TagInfo) setFuncs(ptrBuilder, sliceBuilder *TypeBuilder, typ reflect.T
 	case reflect.String:
 		ti.fUnm, ti.fM = stringMFuncs(pidx)
 	case reflect.Slice: // &[]byte; Array
-		if isBytes(baseType) {
+		if isRawMessage(baseType) {
+			ti.fUnm, ti.fM = rawMessageMFuncs(pidx)
+		} else if isBytes(baseType) {
 			ti.fUnm, ti.fM = bytesMFuncs(pidx)
 		} else {
 			ti.BaseType = baseType
